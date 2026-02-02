@@ -1,9 +1,9 @@
 using DMUStudent.HW2
-using POMDPs: states, actions
+using POMDPs: states, actions, discount, stateindex, convert_s
 using POMDPTools: ordered_states, render
 import Cairo, Fontconfig # Needed in some cases for rendering the value function on grid world
 using Debugger
-using StaticArrays
+using SparseArrays
 ##############
 # Instructions
 ##############
@@ -20,68 +20,151 @@ differ from this considerably.
 # Question 3
 ############
 
-@show actions(grid_world) # prints the actions. In this case each action is a Symbol. Use ?Symbol to find out more.
+# @show actions(grid_world) # prints the actions. In this case each action is a Symbol. Use ?Symbol to find out more.
 
-T = transition_matrices(grid_world)
-display(T) # this is a Dict that contains a transition matrix for each action
+# T = transition_matrices(grid_world)
+# display(T) # this is a Dict that contains a transition matrix for each action
 
-@show T[:left][1, 2] # the probability of transitioning between states with indices 1 and 2 when taking action :left
+# @show T[:left][1, 2] # the probability of transitioning between states with indices 1 and 2 when taking action :left
 
-R = reward_vectors(grid_world)
-display(R) # this is a Dict that contains a reward vector for each action
 
-@show R[:right][1] # the reward for taking action :right in the state with index 1
 
 function value_iteration(m)
-    # It is good to put performance-critical code in a function: https://docs.julialang.org/en/v1/manual/performance-tips/
+    γ = discount(m)
     A = actions(m)
-    T_sparse = transition_matrices(grid_world, sparse=true)
-    @show T_sparse
+    T_sparse = transition_matrices(m, sparse = true)
+    T_sparse_transposed = Dict(action => sparse(T_sparse[action]') for action in A) # for nzrange gotta flip which is confusin
+    #@show T_sparse
+    R = reward_vectors(m)
     states_defined = states(m)
     num_states = length(states_defined)
     V_old = zeros(num_states)
     V_new = zeros(num_states)
-
+    count = 0
+    
     while true
         for i in 1:num_states
-            state = states_defined[i]
-            this_states_T = T_sparse[i]
-            possible_next_
-            Q_new[i] = R
+
+            max_Q = -Inf
+            for action in A
+
+                Q_next_states = 0.0 # gonna sum the next states which should reduce compute alot since its a sparse matrix now
+
+                for idx in nzrange(T_sparse_transposed[action], i) # non zero indexs of the sparse T for this action for this col i which is the current state
+                    j = rowvals(T_sparse_transposed[action])[idx] # this is actually the index of the state can go to
+                    prob = nonzeros(T_sparse_transposed[action])[idx] # extract the prob of transition from the spare struct
+                    Q_next_states += prob * V_old[j]
+                end
+                
+                max_Q =  max(max_Q, R[action][i] + (γ * Q_next_states)) # only assign if its new max
             
-            Q_1
+            end
+            V_new[i] = max_Q
             
-            max()
         end
+        count += 1
+        println(count)
 
         # inf norm
-        if maximum(abs.(V_new .- V)) < 1e-8
+        if maximum(abs.(V_new .- V_old)) < 1e-6
+            
             break
         end
 
-    return V
+        # so instead of copying each time, we just swap the variable
+        V_new, V_old = V_old, V_new # ac
+
+    end
+
+    return V_new
 end
 
-#@enter(value_iteration(grid_world))
+function matrix_value_iteration(m)
+    γ = discount(m)
+    A = actions(m)
+    T_sparse = transition_matrices(m, sparse = true)
+    
+    R = reward_vectors(m)
+    num_states = length(states(m))
+    
+    V_old = zeros(num_states)
+    V_new = zeros(num_states)
+    count = 0
+    
+    while true
+        
+        Q_mat = hcat([R[a] .+ γ .* (T_sparse[a] * V_old) for a in A]...)
 
-V = rand(length(states(grid_world)))*10.0 # replace this with value_iteration(m)
+        V_new .= vec(maximum(Q_mat, dims=2))
+        
+        count += 1
+        println(count)
+
+        # inf norm
+        if maximum(abs.(V_new .- V_old)) < 1e-6
+            break
+        end
+
+        # so instead of copying each time, we just swap the variable
+        V_new, V_old = V_old, V_new # ac
+
+    end
+
+    return V_new
+end
+
+
+#@enter(value_iteration(grid_world))
+m = grid_world
+V = value_iteration(m) # replace this with value_iteration(m)
 # If you are in an environment with multimedia capability (e.g. VSCode, Jupyter, Pluto), use this:
 #display(render(grid_world, color=V)) # In the REPL, this will output an annoying amount of text
 # If you are in the REPL or want to save a png, use this:
-# using Compose: draw, PNG
-# draw(PNG("value.png"), render(grid_world, color=V))
+using Compose: draw, PNG
+draw(PNG("value.png"), render(m, color=V))
 
 ############
 # Question 4
 ############
 
-# You can create an mdp object representing the problem with the following:
-m = UnresponsiveACASMDP(2)
+### PLOTING
+using Plots
 
+m = UnresponsiveACASMDP(2)  # use small version first
+T_sparse = transition_matrices(m, sparse=true)
+A = actions(m)
+
+# Plot spy plots (shows where non-zeros are)
+p1 = spy(T_sparse[-1500], title="T[-1500]", markersize=1)
+p2 = spy(T_sparse[0], title="T[0]", markersize=1)
+p3 = spy(T_sparse[1500], title="T[1500]", markersize=1)
+
+plot(p1, p2, p3, layout=(1,3), size=(1200, 400))
+savefig("T_structure.png")
+
+# Also check: are they similar to each other?
+@show nnz(T_sparse[-1500])  # number of non-zeros
+@show nnz(T_sparse[0])
+@show nnz(T_sparse[1500])
+
+# Check if T matrices differ only in certain rows/cols
+diff_01 = T_sparse[0] - T_sparse[-1500]
+diff_02 = T_sparse[0] - T_sparse[1500]
+@show nnz(diff_01)
+@show nnz(diff_02)
+
+# Are any of them the same?
+@show T_sparse[-1500] == T_sparse[1500]
+
+#####
+
+# You can create an mdp object representing the problem with the following:
+m = UnresponsiveACASMDP(12)
+@show actions(m)
 # transition_matrices and reward_vectors work the same as for grid_world, however this problem is much larger, so you will have to exploit the structure of the problem. In particular, you may find the docstring of transition_matrices helpful:
 # display(@doc(transition_matrices))
-
-V = value_iteration(m)
+#@enter(value_iteration(m))
+V = matrix_value_iteration(m)
 
 @show HW2.evaluate(V)
 
@@ -97,13 +180,13 @@ V = value_iteration(m)
 # IMPORTANT NOTE: YOU ONLY NEED TO USE STATE INDICES FOR THIS ASSIGNMENT, using the states may help you make faster specialized code for the ACAS problem, but it is not required
 # using POMDPs: states, stateindex
 
-# s = first(states(m))
-# @show si = stateindex(m, s)
+s = first(states(m))
+@show si = stateindex(m, s)
 
 # # To convert from a state index to a physical state in the ACAS MDP, use convert_s:
-# using POMDPs: convert_s
+using POMDPs: convert_s
 
-# @show s = convert_s(ACASState, si, m)
+@show s = convert_s(ACASState, si, m)
 
 # # To visualize a state in the ACAS MDP, use
-# render(m, (s=s,))
+render(m, (s=s,))
