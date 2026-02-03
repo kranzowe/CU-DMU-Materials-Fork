@@ -225,7 +225,7 @@ end
 
 
 # You can create an mdp object representing the problem with the following:
-m = UnresponsiveACASMDP(15)
+m = UnresponsiveACASMDP(7)
 # @show actions(m)
 
 # s = first(states(m))

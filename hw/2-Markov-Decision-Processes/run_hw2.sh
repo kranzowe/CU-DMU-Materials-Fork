@@ -3,8 +3,8 @@
 #SBATCH --output=hw2_%j.out
 #SBATCH --error=hw2_%j.err
 #SBATCH --time=02:00:00
-#SBATCH --mem=32G
-#SBATCH --cpus-per-task=8
+#SBATCH --mem=40G
+#SBATCH --cpus-per-task=4
 #SBATCH --nice=100
 
 # ============================================
@@ -66,18 +66,8 @@ try
     check_memory()
     
 catch e
-    if isa(e, OutOfMemoryError)
-        println("\n!!! OUT OF MEMORY !!!")
-        println("Job ran out of memory. Try:")
-        println("  1. Using sparse matrices")
-        println("  2. Reducing problem size")
-        println("  3. Requesting more memory with --mem")
-    else
-        println("\n!!! ERROR !!!")
-        showerror(stdout, e)
-        println()
-        showerror(stdout, e, catch_backtrace())
-    end
+    println("\n!!! ERROR !!!")
+    println(typeof(e))
     exit(1)
 end
 '
