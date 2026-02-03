@@ -115,51 +115,22 @@ end
 
 
 #@enter(value_iteration(grid_world))
-m = grid_world
-V = value_iteration(m) # replace this with value_iteration(m)
-# If you are in an environment with multimedia capability (e.g. VSCode, Jupyter, Pluto), use this:
-#display(render(grid_world, color=V)) # In the REPL, this will output an annoying amount of text
-# If you are in the REPL or want to save a png, use this:
-using Compose: draw, PNG
-draw(PNG("value.png"), render(m, color=V))
+# m = grid_world
+# V = value_iteration(m) # replace this with value_iteration(m)
+# # If you are in an environment with multimedia capability (e.g. VSCode, Jupyter, Pluto), use this:
+# #display(render(grid_world, color=V)) # In the REPL, this will output an annoying amount of text
+# # If you are in the REPL or want to save a png, use this:
+# using Compose: draw, PNG
+# draw(PNG("value.png"), render(m, color=V))
 
 ############
 # Question 4
 ############
 
-### PLOTING
-using Plots
 
-m = UnresponsiveACASMDP(2)  # use small version first
-T_sparse = transition_matrices(m, sparse=true)
-A = actions(m)
-
-# Plot spy plots (shows where non-zeros are)
-p1 = spy(T_sparse[-1500], title="T[-1500]", markersize=1)
-p2 = spy(T_sparse[0], title="T[0]", markersize=1)
-p3 = spy(T_sparse[1500], title="T[1500]", markersize=1)
-
-plot(p1, p2, p3, layout=(1,3), size=(1200, 400))
-savefig("T_structure.png")
-
-# Also check: are they similar to each other?
-@show nnz(T_sparse[-1500])  # number of non-zeros
-@show nnz(T_sparse[0])
-@show nnz(T_sparse[1500])
-
-# Check if T matrices differ only in certain rows/cols
-diff_01 = T_sparse[0] - T_sparse[-1500]
-diff_02 = T_sparse[0] - T_sparse[1500]
-@show nnz(diff_01)
-@show nnz(diff_02)
-
-# Are any of them the same?
-@show T_sparse[-1500] == T_sparse[1500]
-
-#####
 
 # You can create an mdp object representing the problem with the following:
-m = UnresponsiveACASMDP(12)
+m = UnresponsiveACASMDP(20)
 @show actions(m)
 # transition_matrices and reward_vectors work the same as for grid_world, however this problem is much larger, so you will have to exploit the structure of the problem. In particular, you may find the docstring of transition_matrices helpful:
 # display(@doc(transition_matrices))
@@ -167,6 +138,7 @@ m = UnresponsiveACASMDP(12)
 V = matrix_value_iteration(m)
 
 @show HW2.evaluate(V)
+HW2.evaluate(V, "owen.kranz@colorado.edu")
 
 ########
 # Extras
