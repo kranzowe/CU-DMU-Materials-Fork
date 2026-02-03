@@ -233,7 +233,7 @@ m = UnresponsiveACASMDP(7)
 # transition_matrices and reward_vectors work the same as for grid_world, however this problem is much larger, so you will have to exploit the structure of the problem. In particular, you may find the docstring of transition_matrices helpful:
 # display(@doc(transition_matrices))
 #@enter(value_iteration(m))
-V = no_storage_value_iteration(m)
+V = matrix_value_iteration(m)
 
 # @show HW2.evaluate(V)
 HW2.evaluate(V, "owen.kranz@colorado.edu")
