@@ -15,7 +15,7 @@
 
 # Also set a soft limit via ulimit (in KB)
 # 30GB soft limit - gives warning before SLURM hard kill
-ulimit -v 31457280
+# ulimit -v 31457280
 
 echo "==================================="
 echo "Job started: $(date)"
@@ -35,7 +35,7 @@ echo ""
 # Run Julia with memory-conscious settings
 # ============================================
 julia --threads=$SLURM_CPUS_PER_TASK \
-      --heap-size-hint=28G \
+      --heap-size-hint=24G \
       -e '
 println("Julia started with $(Threads.nthreads()) threads")
 println("Starting memory: $(round(Sys.free_memory() / 1e9, digits=2)) GB free")

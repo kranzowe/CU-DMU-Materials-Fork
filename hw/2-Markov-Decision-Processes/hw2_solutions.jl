@@ -5,6 +5,7 @@ import Cairo, Fontconfig # Needed in some cases for rendering the value function
 using Debugger
 using SparseArrays
 using CUDA
+using Threads
 ##############
 # Instructions
 ##############
@@ -126,7 +127,8 @@ function no_storage_value_iteration(m)
     count = 0
     
     while true
-        for (i, s) in enumerate(S)
+        Threads.@threads for i in 1:num_states
+            s = S[i]
 
             max_Q = -Inf
             for action in A
