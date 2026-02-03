@@ -113,6 +113,54 @@ function matrix_value_iteration(m)
     return V_new
 end
 
+function no_storage_value_iteration(m)
+    γ = discount(m)
+    A = actions(m)
+
+    R = reward_vectors(m)
+    S = ordered_states(m)
+    num_states = length(S)
+    V_old = zeros(num_states)
+    V_new = zeros(num_states)
+    count = 0
+    
+    while true
+        for (i, S) in enumerate(S)
+
+            max_Q = -Inf
+            for action in A
+
+                Q = R[a][i] # gonna sum the next states which should reduce compute alot since its a sparse matrix now
+
+                # gotta add the next states
+                d = transistion(m, s, a)
+                for (sp, p) in weighted_iterator(d)
+                    j = stateindex(sp) # this is actually the index of the state can go to
+                    Q += p * V_old[j]
+                end
+                
+                max_Q =  max(max_Q, Q) # only assign if its new max
+            
+            end
+            V_new[i] = max_Q
+            
+        end
+        count += 1
+        println(count)
+
+        # inf norm
+        if maximum(abs.(V_new .- V_old)) < 1e-6
+            
+            break
+        end
+
+        # so instead of copying each time, we just swap the variable
+        V_new, V_old = V_old, V_new # ac
+
+    end
+
+    return V_new
+end
 
 #@enter(value_iteration(grid_world))
 # m = grid_world
@@ -130,12 +178,12 @@ end
 
 
 # You can create an mdp object representing the problem with the following:
-m = UnresponsiveACASMDP(20)
+m = UnresponsiveACASMDP(7)
 @show actions(m)
 # transition_matrices and reward_vectors work the same as for grid_world, however this problem is much larger, so you will have to exploit the structure of the problem. In particular, you may find the docstring of transition_matrices helpful:
 # display(@doc(transition_matrices))
 #@enter(value_iteration(m))
-V = matrix_value_iteration(m)
+V = no_storage_value_iteration(m)
 
 @show HW2.evaluate(V)
 HW2.evaluate(V, "owen.kranz@colorado.edu")
