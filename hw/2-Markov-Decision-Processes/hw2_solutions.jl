@@ -4,6 +4,7 @@ using POMDPTools: ordered_states, render, weighted_iterator
 import Cairo, Fontconfig # Needed in some cases for rendering the value function on grid world
 using Debugger
 using SparseArrays
+using CUDA
 ##############
 # Instructions
 ##############
@@ -130,7 +131,7 @@ function no_storage_value_iteration(m)
             max_Q = -Inf
             for action in A
 
-                Q = R[action][i] # gonna sum the next states which should reduce compute alot since its a sparse matrix now
+                Q = R[action][i]
 
                 # gotta add the next states
                 d = transition(m, s, action)
@@ -162,6 +163,50 @@ function no_storage_value_iteration(m)
     return V_new
 end
 
+# function gpu_value_iteration(map)
+#     γ = Float32(discount(m))
+#     A = collect(actions(m))
+#     num_actions = Int32(length(A))
+
+#     #needed dims to run this on GPU
+#     nhbins = nlabels(m.hbins)
+#     nhdotbins = nlabels(m.hdotbins)
+#     ndbins = nlabels(m.dbins)
+#     num_states = nhbins * nhdotbins * nhbins * ndbins
+
+#     h_centers = CuArray(Float32.(collect(bincenters(m.hbins))))
+#     hdot_centers = CuArray(Float32.(collect(bincenters(m.hdotbins))))
+#     d_centers = CuArray(Float32.(collect(bincenters(m.dbins))))
+
+#     actions_gpu = CuArray(Float32.(A))
+
+#     R = reward_vectors(m)
+#     R_matrix = hcat([Float32.(R_cpu[a]) for a in A]...)
+#     R_gpu = CuArray(R_matrix)
+
+    
+#     num_states = length(S)
+#     V_old = CUDA.zeros(Float32, num_states)
+#     V_new = CUDA.zeros(num_states)
+
+#     count = 0
+#     threads_per_block = 256
+#     blocks = cld(num_states, threads_per_block)
+
+#     while true
+#         @cuda threads = threads_per_block blocks=blocks kernel_value_iteration!(
+
+#         )
+
+
+
+#     end
+# end
+
+# function kernel_value_iteration!(V_new, V_old, R, γ, actions, num_actions,
+#                                 h_centers, hdot_centers, d_centers,
+#                                 )
+
 #@enter(value_iteration(grid_world))
 # m = grid_world
 # V = value_iteration(m) # replace this with value_iteration(m)
@@ -178,14 +223,17 @@ end
 
 
 # You can create an mdp object representing the problem with the following:
-m = UnresponsiveACASMDP(10)
-@show actions(m)
+m = UnresponsiveACASMDP(15)
+# @show actions(m)
+
+# s = first(states(m))
+# @show transition(m, s, 0)
 # transition_matrices and reward_vectors work the same as for grid_world, however this problem is much larger, so you will have to exploit the structure of the problem. In particular, you may find the docstring of transition_matrices helpful:
 # display(@doc(transition_matrices))
 #@enter(value_iteration(m))
 V = no_storage_value_iteration(m)
 
-@show HW2.evaluate(V)
+# @show HW2.evaluate(V)
 HW2.evaluate(V, "owen.kranz@colorado.edu")
 
 ########
@@ -200,13 +248,13 @@ HW2.evaluate(V, "owen.kranz@colorado.edu")
 # IMPORTANT NOTE: YOU ONLY NEED TO USE STATE INDICES FOR THIS ASSIGNMENT, using the states may help you make faster specialized code for the ACAS problem, but it is not required
 # using POMDPs: states, stateindex
 
-s = first(states(m))
-@show si = stateindex(m, s)
+# s = first(states(m))
+# @show si = stateindex(m, s)
 
-# # To convert from a state index to a physical state in the ACAS MDP, use convert_s:
-using POMDPs: convert_s
+# # # To convert from a state index to a physical state in the ACAS MDP, use convert_s:
+# using POMDPs: convert_s
 
-@show s = convert_s(ACASState, si, m)
+# @show s = convert_s(ACASState, si, m)
 
-# # To visualize a state in the ACAS MDP, use
-render(m, (s=s,))
+# # # To visualize a state in the ACAS MDP, use
+# render(m, (s=s,))
