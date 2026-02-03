@@ -1,6 +1,6 @@
 using DMUStudent.HW2
-using POMDPs: states, actions, discount, stateindex, convert_s
-using POMDPTools: ordered_states, render
+using POMDPs: states, actions, discount, stateindex, convert_s, transition
+using POMDPTools: ordered_states, render, weighted_iterator
 import Cairo, Fontconfig # Needed in some cases for rendering the value function on grid world
 using Debugger
 using SparseArrays
@@ -125,17 +125,17 @@ function no_storage_value_iteration(m)
     count = 0
     
     while true
-        for (i, S) in enumerate(S)
+        for (i, s) in enumerate(S)
 
             max_Q = -Inf
             for action in A
 
-                Q = R[a][i] # gonna sum the next states which should reduce compute alot since its a sparse matrix now
+                Q = R[action][i] # gonna sum the next states which should reduce compute alot since its a sparse matrix now
 
                 # gotta add the next states
-                d = transistion(m, s, a)
+                d = transition(m, s, action)
                 for (sp, p) in weighted_iterator(d)
-                    j = stateindex(sp) # this is actually the index of the state can go to
+                    j = stateindex(m, sp) # this is actually the index of the state can go to
                     Q += p * V_old[j]
                 end
                 
@@ -178,7 +178,7 @@ end
 
 
 # You can create an mdp object representing the problem with the following:
-m = UnresponsiveACASMDP(7)
+m = UnresponsiveACASMDP(10)
 @show actions(m)
 # transition_matrices and reward_vectors work the same as for grid_world, however this problem is much larger, so you will have to exploit the structure of the problem. In particular, you may find the docstring of transition_matrices helpful:
 # display(@doc(transition_matrices))
