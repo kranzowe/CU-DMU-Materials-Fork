@@ -5,7 +5,7 @@ import Cairo, Fontconfig # Needed in some cases for rendering the value function
 using Debugger
 using SparseArrays
 using CUDA
-using Threads
+
 ##############
 # Instructions
 ##############
@@ -117,10 +117,10 @@ end
 
 function no_storage_value_iteration(m)
     γ = discount(m)
-    A = actions(m)
+    A = collect(actions(m))
 
-    R = reward_vectors(m)
-    S = ordered_states(m)
+    R_vecs = [reward_vectors(m)[a] for a in A]
+    S = collect(ordered_states(m))
     num_states = length(S)
     V_old = zeros(num_states)
     V_new = zeros(num_states)
@@ -131,9 +131,9 @@ function no_storage_value_iteration(m)
             s = S[i]
 
             max_Q = -Inf
-            for action in A
+            for (a_idx, action) in enumerate(A)
 
-                Q = R[action][i]
+                Q = R_vecs[a_idx][i]
 
                 # gotta add the next states
                 d = transition(m, s, action)

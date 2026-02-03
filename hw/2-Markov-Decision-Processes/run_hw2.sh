@@ -3,78 +3,45 @@
 #SBATCH --output=hw2_%j.out
 #SBATCH --error=hw2_%j.err
 #SBATCH --time=02:00:00
-#SBATCH --mem=40G
-#SBATCH --cpus-per-task=4
+#SBATCH --mem=64G
+#SBATCH --cpus-per-task=8
 #SBATCH --nice=100
-
-# ============================================
-# Memory limit - SLURM will kill job if exceeded
-# This protects the node from your job eating all RAM
-# Adjust --mem above based on what you need
-# ============================================
-
-# Also set a soft limit via ulimit (in KB)
-# 30GB soft limit - gives warning before SLURM hard kill
-# ulimit -v 31457280
 
 echo "==================================="
 echo "Job started: $(date)"
 echo "Node: $(hostname)"
 echo "Job ID: $SLURM_JOB_ID"
-echo "Memory limit: $SLURM_MEM_PER_NODE MB"
-echo "CPUs: $SLURM_CPUS_PER_TASK"
 echo "==================================="
 
 # Check current node memory before starting
-echo ""
-echo "Node memory status before job:"
 free -h
-echo ""
+
+# Key fixes for threading stability:
+# 1. Set thread pinning
+export JULIA_EXCLUSIVE=1
+
+# 2. Limit OpenBLAS threads (prevents oversubscription)
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+
+# 3. Increase stack size for threads
+ulimit -s unlimited
 
 # ============================================
-# Run Julia with memory-conscious settings
+# Run Julia
 # ============================================
 julia --threads=$SLURM_CPUS_PER_TASK \
-      --heap-size-hint=24G \
-      -e '
-println("Julia started with $(Threads.nthreads()) threads")
-println("Starting memory: $(round(Sys.free_memory() / 1e9, digits=2)) GB free")
+      --heap-size-hint=50G \
+      --check-bounds=yes \
+      hw2_solutions.jl
 
-# Memory monitoring function
-function check_memory()
-    free_gb = Sys.free_memory() / 1e9
-    total_gb = Sys.total_memory() / 1e9
-    used_gb = total_gb - free_gb
-    println("Memory: $(round(used_gb, digits=2))/$(round(total_gb, digits=2)) GB used")
-    
-    # Warn if getting low
-    if free_gb < 4.0
-        @warn "Low memory! Only $(round(free_gb, digits=2)) GB free"
-    end
-    
-    return free_gb
-end
-
-# Run with try-catch to handle OOM gracefully
-try
-    check_memory()
-    
-    println("\n=== Including hw2_solutions.jl ===\n")
-    include("hw2_solutions.jl")
-    
-    println("\n=== Finished ===")
-    check_memory()
-    
-catch e
-    println("\n!!! ERROR !!!")
-    println(typeof(e))
-    exit(1)
-end
-'
+exit_code=$?
 
 echo ""
 echo "==================================="
 echo "Job finished: $(date)"
-echo "Node memory status after job:"
+echo "Exit code: $exit_code"
 free -h
 echo "==================================="
+
+exit $exit_code
