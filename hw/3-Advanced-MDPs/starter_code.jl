@@ -2,7 +2,7 @@ using DMUStudent.HW3: HW3, DenseGridWorld, visualize_tree
 using POMDPs: actions, @gen, isterminal, discount, statetype, actiontype, simulate, states, initialstate
 using D3Trees: inchrome, inbrowser
 using StaticArrays: SA
-using Statistics: mean
+using Statistics: mean, std
 using BenchmarkTools: @btime
 
 ##############
@@ -23,22 +23,71 @@ Please make sure to update DMUStudent to gain access to the HW3 module.
 # Question 3
 ############
 
-m = HW3.DenseGridWorld()
+m = HW3.DenseGridWorld(seed=3)
 
 function rollout(mdp, policy_function, s0, max_steps=100)
-    # fill this in with code from the assignment document
-    return 0.0 # replace this with the reward
+    r_total = 0.0
+    t=0
+    s = s0
+    while !isterminal(mdp, s) && t < max_steps
+        a = policy_function(mdp, s)
+        s, r = @gen(:sp, :r)(mdp, s, a)
+        r_total += discount(m)^t * r
+        t += 1
+    end
+    return r_total # replace this with the reward
 end
 
-function heuristic_policy(m, s)
+function rand_policy(m, s)
     # put a smarter heuristic policy here
     return rand(actions(m))
 end
 
+@show s_2020 = states(m)[400]
+@show sp, reward2020 = s, r = @gen(:sp, :r)(m, [19,20], :left)
+function heuristic_policy(m, s)
+    # just go to 20, 20
+    # use the module to go to the nearest multiple of 2020
+    diff_s = [20, 20] - [s[1]%20, s[2]%20]
+    abs_diff = diff_s .* diff_s
+    max_element = argmax(abs_diff)
+
+    if max_element == 1
+        #move left or right
+        if diff_s[1] > 0
+            # state is right
+            return :right
+        else
+            return :left
+        end
+    else
+        #move up or down
+        if diff_s[2] > 0
+            # state is right
+            return :up
+        else
+            return :down
+        end
+    end
+    
+    return rand(actions(m))
+end
+
+
 # This code runs monte carlo simulations: you can calculate the mean and standard error from the results
-@show results = [rollout(m, heuristic_policy, rand(initialstate(m))) for _ in 1:10]
+num_runs = 10
+results = [rollout(m, rand_policy, rand(initialstate(m))) for _ in 1:num_runs]
+
+@show mean_results = mean(results)
+@show std_results = std(results)
+println("Computed SEM is: ", 1/sqrt(num_runs) * std_results)
 
 
+@show results = [rollout(m, heuristic_policy, rand(initialstate(m))) for _ in 1:num_runs]
+
+@show mean_results = mean(results)
+@show std_results = std(results)
+println("Computed SEM is: ", 1/sqrt(num_runs) * std_results)
 ############
 # Question 4
 ############
