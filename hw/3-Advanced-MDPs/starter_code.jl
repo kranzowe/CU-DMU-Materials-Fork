@@ -1,9 +1,11 @@
 using DMUStudent.HW3: HW3, DenseGridWorld, visualize_tree
 using POMDPs: actions, @gen, isterminal, discount, statetype, actiontype, simulate, states, initialstate
+using POMDPTools: render
 using D3Trees: inchrome, inbrowser
 using StaticArrays: SA
 using Statistics: mean, std
 using BenchmarkTools: @btime
+using LinearAlgebra
 
 ##############
 # Instructions
@@ -43,12 +45,22 @@ function rand_policy(m, s)
     return rand(actions(m))
 end
 
-@show s_2020 = states(m)[400]
-@show sp, reward2020 = s, r = @gen(:sp, :r)(m, [19,20], :left)
 function heuristic_policy(m, s)
     # just go to 20, 20
     # use the module to go to the nearest multiple of 2020
-    diff_s = [20, 20] - [s[1]%20, s[2]%20]
+    possible_terminal_states = [[20, 20], [20, 40], [40, 20], [40, 40]]
+    diffs_terminal = [[0, 0], [0, 0], [0, 0], [0, 0]]
+    norm_diffs = [0.0, 0.0, 0.0, 0.0]
+    for (i, term_s) in enumerate(possible_terminal_states)
+        diffs_terminal[i] = term_s - s
+        norm_diffs[i] = norm(diffs_terminal[i])
+    end
+    #@show diffs_terminal
+    #@show norm_diffs
+    min_diff_index = argmin(norm_diffs)
+
+    diff_s = possible_terminal_states[min_diff_index] - s
+
     abs_diff = diff_s .* diff_s
     max_element = argmax(abs_diff)
 
@@ -75,7 +87,7 @@ end
 
 
 # This code runs monte carlo simulations: you can calculate the mean and standard error from the results
-num_runs = 10
+num_runs = 400
 results = [rollout(m, rand_policy, rand(initialstate(m))) for _ in 1:num_runs]
 
 @show mean_results = mean(results)
@@ -83,8 +95,9 @@ results = [rollout(m, rand_policy, rand(initialstate(m))) for _ in 1:num_runs]
 println("Computed SEM is: ", 1/sqrt(num_runs) * std_results)
 
 
-@show results = [rollout(m, heuristic_policy, rand(initialstate(m))) for _ in 1:num_runs]
-
+results = [rollout(m, heuristic_policy, rand(initialstate(m))) for _ in 1:num_runs]
+println("Min reward: ", minimum(results))
+println("Max reward: ", maximum(results))
 @show mean_results = mean(results)
 @show std_results = std(results)
 println("Computed SEM is: ", 1/sqrt(num_runs) * std_results)
@@ -107,41 +120,108 @@ s = SA[19,19]
 @show typeof(s)
 @assert s isa statetype(m)
 
-# here is an example of how to visualize a dummy tree (q, n, and t should actually be filled in your mcts code, but for this we fill it manually)
-q[(SA[1,1], :right)] = 0.0
-q[(SA[2,1], :right)] = 0.0
-n[(SA[1,1], :right)] = 1
-n[(SA[2,1], :right)] = 0
-t[(SA[1,1], :right, SA[2,1])] = 1
-
-inchrome(visualize_tree(q, n, t, SA[1,1])) # use inbrowser(visualize_tree(q, n, t, SA[1,1]), "firefox") etc. if you want to use a different browser
-
-############
-# Question 5
-############
-
-# A starting point for the MCTS select_action function (a policy) which can be used for Questions 4 and 5
-function select_action(m, s)
-
-    start = time_ns()
-    n = Dict{Tuple{statetype(m), actiontype(m)}, Int}()
-    q = Dict{Tuple{statetype(m), actiontype(m)}, Float64}()
-
-
-    for _ in 1:1000
-    # while time_ns() < start + 40_000_000 # you can replace the above line with this if you want to limit this loop to run within 40ms
-        break # replace this with mcts iterations to fill n and q
-    end
-
-    # select a good action based on q and/or n
-
-    return rand(actions(m)) # this dummy function returns a random action, but you should return your selected action
+mutable struct Policy{S,A}
+    # implied from the pseudo i think i got everything lol
+    N::Dict{Tuple{S, A}, Int}
+    Q::Dict{Tuple{S, A}, Float64}
+    T::Dict{Tuple{S, A, S}, Int}
+    policy_function::Function # for da rollout
+    max_rollout_steps::Int64
+    env::DenseGridWorld
+    max_itr::Int64
+    depth::Int64
+    c::Float64
+    beta::Float64
 end
 
+function monte_carlo_tree_search(policy::Policy, s::S, visualize::Bool) where {S}
+
+    start = time_ns()
+    # while time_ns() < start + 40_000_000 # you can replace the above line with this if you want to limit this loop to run within 40ms
+    # 
+    for k in 1:policy.max_itr
+        simulate!(policy, s)
+    end
+
+    if visualize
+        inchrome(visualize_tree(policy.Q, policy.N, policy.T, s))
+    end
+
+    # okay julia is pretty fresh this is cool syntax
+    return argmax(a -> policy.Q[s,a], actions(policy.env))
+end
+
+
+function explore(p::Policy, s::S) where {S}
+    Ns = sum(a -> get(p.N, (s,a), 0), actions(p.env))
+    return argmax(a -> get(p.Q, (s,a), 0.0) + (p.c * (Ns^p.beta)/(1e-6 + sqrt(get(p.N, (s,a), 0)))), actions(p.env))
+end
+
+function simulate!(policy::Policy, s::S, d::Int64 = policy.depth) where {S}
+    if d <= 0
+        return rollout(policy.env, policy.policy_function, s, policy.max_rollout_steps)
+    end
+    #tryna keep it like the pseudocode as much as possible
+    env, N, Q, T, c = policy.env, policy.N, policy.Q, policy.T, policy.c
+
+    A, gamma = actions(env), discount(env)
+
+    if !haskey(N, (s, first(A)))
+        for a in A
+            N[(s, a)] = 0
+            Q[(s,a)] = 0.0
+        end
+        return rollout(env, policy.policy_function, s, policy.max_rollout_steps)
+    end
+
+    a = explore(policy, s)
+
+    s_prime, r = @gen(:sp, :r)(env, s, a)
+
+    q = r + gamma * simulate!(policy, s_prime, d-1)
+
+    N[(s, a)] += 1
+    Q[(s,a)] += (q - Q[(s,a)])/N[(s,a)] # backs up Q apparent i dont get it
+    T[(s,a,s_prime)] = get(T, (s,a,s_prime), 0) + 1
+    
+    return q
+end
+# here is an example of how to visualize a dummy tree (q, n, and t should actually be filled in your mcts code, but for this we fill it manually)
+# q[(SA[1,1], :right)] = 0.0
+# q[(SA[2,1], :right)] = 0.0
+# n[(SA[1,1], :right)] = 1
+# n[(SA[2,1], :right)] = 0
+# t[(SA[1,1], :right, SA[2,1])] = 1
+
+
+# inchrome(visualize_tree(q, n, t, SA[1,1])) # use inbrowser(visualize_tree(q, n, t, SA[1,1]), "firefox") etc. if you want to use a different browser
+
+# A starting point for the MCTS select_action function (a policy) which can be used for Questions 4 and 5
+function select_action(m, s, visualize=false)
+
+    n = Dict{Tuple{statetype(m), actiontype(m)}, Int}()
+    q = Dict{Tuple{statetype(m), actiontype(m)}, Float64}()
+    t = Dict{Tuple{statetype(m), actiontype(m), statetype(m)}, Int}()
+    max_rollout_steps = 10 
+    max_itr = 7
+    search_depth = 7
+    c = 2.0*(100 + 250) # from the rollout of # 1
+    beta = 0.25
+    policy = Policy(n, q, t, rand_policy, max_rollout_steps, m, max_itr, search_depth, c, beta)
+
+ 
+    return monte_carlo_tree_search(policy, s, visualize)
+end
+# call a few to precompile
+select_action(m, SA[35,35])
+select_action(m, SA[35,35])
 @btime select_action(m, SA[35,35]) # you can use this to see how much time your function takes to run. A good time is 10-20ms.
 
+
+# answer prob 4:
+select_action(m, SA[19,19], true)
 # use the code below to evaluate the MCTS policy
-@show results = [rollout(m, select_action, rand(initialstate(m)), max_steps=100) for _ in 1:100]
+@show results = [rollout(m, select_action, rand(initialstate(m)), 100) for _ in 1:100]
 
 ############
 # Question 6
