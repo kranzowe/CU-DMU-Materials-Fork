@@ -1,5 +1,5 @@
 using DMUStudent.HW3: HW3, DenseGridWorld, visualize_tree
-using POMDPs: actions, @gen, isterminal, discount, statetype, actiontype, simulate, states, initialstate
+using POMDPs: actions, @gen, isterminal, discount, statetype, actiontype, simulate, states, initialstate, stateindex
 using POMDPTools: render
 using D3Trees: inchrome, inbrowser
 using StaticArrays: SA
@@ -81,7 +81,7 @@ function heuristic_policy(m, s)
             return :down
         end
     end
-    
+    #cathc all
     return rand(actions(m))
 end
 
@@ -105,20 +105,11 @@ println("Computed SEM is: ", 1/sqrt(num_runs) * std_results)
 # Question 4
 ############
 
-m = DenseGridWorld()
+m = DenseGridWorld(seed=4)
 
-S = statetype(m)
-A = actiontype(m)
+# S = statetype(m)
+# A = actiontype(m)
 
-# These would be appropriate containers for your Q, N, and t dictionaries:
-n = Dict{Tuple{S, A}, Int}()
-q = Dict{Tuple{S, A}, Float64}()
-t = Dict{Tuple{S, A, S}, Int}()
-
-# This is an example state - it is a StaticArrays.SVector{2, Int}
-s = SA[19,19]
-@show typeof(s)
-@assert s isa statetype(m)
 
 mutable struct Policy{S,A}
     # implied from the pseudo i think i got everything lol
@@ -133,6 +124,22 @@ mutable struct Policy{S,A}
     c::Float64
     beta::Float64
 end
+
+mutable struct FasterPolicy
+    # implied from the pseudo i think i got everything lol
+    N::Array{Int, 2}
+    Q::Array{Float64, 2}
+    # remove T cuz that only for viz i think
+    policy_function::Function # for da rollout
+    max_rollout_steps::Int64
+    env::DenseGridWorld
+    max_itr::Int64
+    depth::Int64
+    c::Float64
+    beta::Float64
+    expanded::BitVector
+end
+
 
 function monte_carlo_tree_search(policy::Policy, s::S, visualize::Bool) where {S}
 
@@ -151,10 +158,40 @@ function monte_carlo_tree_search(policy::Policy, s::S, visualize::Bool) where {S
     return argmax(a -> policy.Q[s,a], actions(policy.env))
 end
 
+function fast_monte_carlo_tree_search(policy::FasterPolicy, s::S) where {S}
+
+    start = time_ns()
+    
+    while time_ns() < start + 40_000_000 # you can replace the above line with this if you want to limit this loop to run within 40ms
+    # 
+    #for k in 1:policy.max_itr
+        fast_simulate!(policy, s)
+    end
+
+    # okay julia is pretty fresh this is cool syntax
+    si = stateindex(policy.env, s)
+    ai = argmax(a -> policy.Q[si,a], 1:4)
+    return actions(policy.env)[ai]
+
+end
 
 function explore(p::Policy, s::S) where {S}
     Ns = sum(a -> get(p.N, (s,a), 0), actions(p.env))
     return argmax(a -> get(p.Q, (s,a), 0.0) + (p.c * (Ns^p.beta)/(1e-6 + sqrt(get(p.N, (s,a), 0)))), actions(p.env))
+end
+
+function fast_explore(p::FasterPolicy, si::Int)
+    Ns = p.N[si,1] + p.N[si,2] + p.N[si,3] + p.N[si,4]
+    best_a = 1
+    best_val = -Inf
+    @inbounds for ai in 1:4
+        val = p.Q[si, ai] + p.c * (Ns^p.beta) / (1e-6 + sqrt(p.N[si, ai]))
+        if val > best_val
+            best_val = val
+            best_a = ai
+        end
+    end
+    return best_a
 end
 
 function simulate!(policy::Policy, s::S, d::Int64 = policy.depth) where {S}
@@ -186,48 +223,116 @@ function simulate!(policy::Policy, s::S, d::Int64 = policy.depth) where {S}
     
     return q
 end
-# here is an example of how to visualize a dummy tree (q, n, and t should actually be filled in your mcts code, but for this we fill it manually)
-# q[(SA[1,1], :right)] = 0.0
-# q[(SA[2,1], :right)] = 0.0
-# n[(SA[1,1], :right)] = 1
-# n[(SA[2,1], :right)] = 0
-# t[(SA[1,1], :right, SA[2,1])] = 1
 
+function fast_simulate!(policy::FasterPolicy, s::S, d::Int64 = policy.depth) where {S}
+    if d <= 0
+        return rollout(policy.env, policy.policy_function, s, policy.max_rollout_steps)
+    end
+    #tryna keep it like the pseudocode as much as possible
+    env, N, Q, c = policy.env, policy.N, policy.Q, policy.c
 
-# inchrome(visualize_tree(q, n, t, SA[1,1])) # use inbrowser(visualize_tree(q, n, t, SA[1,1]), "firefox") etc. if you want to use a different browser
+    A, gamma = actions(env), discount(env)
 
-# A starting point for the MCTS select_action function (a policy) which can be used for Questions 4 and 5
+    si = stateindex(env, s)
+    if !policy.expanded[si] # tracks expansion
+        policy.expanded[si] = true
+        return rollout(env, policy.policy_function, s, policy.max_rollout_steps)
+    end
+
+    ai = fast_explore(policy, si)
+
+    s_prime, r = @gen(:sp, :r)(env, s, actions(env)[ai])
+
+    q = r + gamma * fast_simulate!(policy, s_prime, d-1)
+
+    N[si, ai] += 1
+    Q[si,ai] += (q - Q[si,ai])/N[si,ai] # backs up Q apparent i dont get it
+
+    return q
+end
+
 function select_action(m, s, visualize=false)
 
     n = Dict{Tuple{statetype(m), actiontype(m)}, Int}()
     q = Dict{Tuple{statetype(m), actiontype(m)}, Float64}()
     t = Dict{Tuple{statetype(m), actiontype(m), statetype(m)}, Int}()
-    max_rollout_steps = 10 
-    max_itr = 7
-    search_depth = 7
-    c = 2.0*(100 + 250) # from the rollout of # 1
+    max_rollout_steps = 20
+    max_itr = 1000
+    search_depth = 30
+    c = 1.0*(100 + 250) # from the rollout of # 1
     beta = 0.25
     policy = Policy(n, q, t, rand_policy, max_rollout_steps, m, max_itr, search_depth, c, beta)
 
  
     return monte_carlo_tree_search(policy, s, visualize)
 end
+function fast_select_action(m, s)
+
+    num_states = length(states(m))
+    n = zeros(Int, num_states, 4)
+    q = zeros(Float64, num_states, 4)
+    max_rollout_steps = 20
+    max_itr = 1000 # NOT USED anymore 
+    search_depth = 30
+    c = 1.0*(100 + 250) # from the rollout of # 1
+    beta = 0.25
+    expanded = falses(num_states)
+    policy = FasterPolicy(n, q, rand_policy, max_rollout_steps, m, max_itr, search_depth, c, beta, expanded)
+
+ 
+    return fast_monte_carlo_tree_search(policy, s)
+end
+function fast_select_action_diff_heur(m, s)
+    num_states = length(states(m))
+    n = zeros(Int, num_states, 4)
+    q = zeros(Float64, num_states, 4)
+    max_rollout_steps = 20
+    max_itr = 1000 # NOT USED anymore 
+    search_depth = 30
+    c = 1.0*(100 + 250) # from the rollout of # 1
+    beta = 0.25
+    expanded = falses(num_states)
+    policy = FasterPolicy(n, q, heuristic_policy, max_rollout_steps, m, max_itr, search_depth, c, beta, expanded)
+
+    return fast_monte_carlo_tree_search(policy, s)
+end
 # call a few to precompile
-select_action(m, SA[35,35])
-select_action(m, SA[35,35])
-@btime select_action(m, SA[35,35]) # you can use this to see how much time your function takes to run. A good time is 10-20ms.
+# select_action(m, SA[35,35])
+# select_action(m, SA[35,35])
+# @btime select_action(m, SA[35,35]) # you can use this to see how much time your function takes to run. A good time is 10-20ms.
+
+# println("now testing faster version")
+fast_select_action(m, SA[35,35])
+fast_select_action(m, SA[35,35])
+# @btime fast_select_action(m, SA[35,35]) # you can use this to see how much time your function takes to run. A good time is 10-20ms.
 
 
-# answer prob 4:
-select_action(m, SA[19,19], true)
+
+#### answer prob 4:
+#select_action(m, SA[19,19], true)
+##### 
+
+###### Q5 answer
 # use the code below to evaluate the MCTS policy
-@show results = [rollout(m, select_action, rand(initialstate(m)), 100) for _ in 1:100]
-
+# println("RESULTS FOR SLOW AND FAST")
+# results = [rollout(m, select_action, rand(initialstate(m)), 100) for _ in 1:30]
+# @show mean_results = mean(results)
+# @show std_results = std(results)
+# println("Computed SEM is: ", 1/sqrt(num_runs) * std_results)
+# results = [rollout(m, fast_select_action, rand(initialstate(m)), 100) for _ in 1:30]
+# @show mean_results = mean(results)
+# @show std_results = std(results)
+# println("Computed SEM is: ", 1/sqrt(num_runs) * std_results)
+# results = [rollout(m, fast_select_action_diff_heur, rand(initialstate(m)), 100) for _ in 1:30]
+# @show mean_results = mean(results)
+# @show std_results = std(results)
+# println("Computed SEM is: ", 1/sqrt(num_runs) * std_results)
+# ### 
 ############
 # Question 6
 ############
 
-HW3.evaluate(select_action, "your.gradescope.email@colorado.edu")
+HW3.evaluate(fast_select_action, "owen.kranz@colorado.edu", time=true)
 
 # If you want to see roughly what's in the evaluate function (with the timing code removed), check sanitized_evaluate.jl
 
