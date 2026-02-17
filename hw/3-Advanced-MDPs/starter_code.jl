@@ -27,12 +27,12 @@ Please make sure to update DMUStudent to gain access to the HW3 module.
 
 m = HW3.DenseGridWorld(seed=3)
 
-function rollout(mdp, policy_function, s0, max_steps=100)
+function rollout(mdp, policy_function, s0, max_steps=100, eps=0)
     r_total = 0.0
     t=0
     s = s0
     while !isterminal(mdp, s) && t < max_steps
-        a = policy_function(mdp, s)
+        a = policy_function(mdp, s, eps)
         s, r = @gen(:sp, :r)(mdp, s, a)
         r_total += discount(m)^t * r
         t += 1
@@ -40,12 +40,15 @@ function rollout(mdp, policy_function, s0, max_steps=100)
     return r_total # replace this with the reward
 end
 
-function rand_policy(m, s)
+function rand_policy(m, s, eps)
     # put a smarter heuristic policy here
     return rand(actions(m))
 end
 
-function heuristic_policy(m, s)
+function heuristic_policy(m, s, eps)
+    if rand() < eps
+        return rand(actions(m))
+    end
     # just go to 20, 20
     # use the module to go to the nearest multiple of 2020
     possible_terminal_states = [[20, 20], [20, 40], [40, 20], [40, 40]]
@@ -82,7 +85,7 @@ function heuristic_policy(m, s)
         end
     end
     #cathc all
-    return rand(actions(m))
+    
 end
 
 
@@ -138,6 +141,7 @@ mutable struct FasterPolicy
     c::Float64
     beta::Float64
     expanded::BitVector
+    eps::Float64
 end
 
 
@@ -226,7 +230,7 @@ end
 
 function fast_simulate!(policy::FasterPolicy, s::S, d::Int64 = policy.depth) where {S}
     if d <= 0
-        return rollout(policy.env, policy.policy_function, s, policy.max_rollout_steps)
+        return rollout(policy.env, policy.policy_function, s, policy.max_rollout_steps, policy.eps)
     end
     #tryna keep it like the pseudocode as much as possible
     env, N, Q, c = policy.env, policy.N, policy.Q, policy.c
@@ -236,7 +240,7 @@ function fast_simulate!(policy::FasterPolicy, s::S, d::Int64 = policy.depth) whe
     si = stateindex(env, s)
     if !policy.expanded[si] # tracks expansion
         policy.expanded[si] = true
-        return rollout(env, policy.policy_function, s, policy.max_rollout_steps)
+        return rollout(env, policy.policy_function, s, policy.max_rollout_steps, policy.eps)
     end
 
     ai = fast_explore(policy, si)
@@ -277,7 +281,8 @@ function fast_select_action(m, s)
     c = 1.0*(100 + 250) # from the rollout of # 1
     beta = 0.25
     expanded = falses(num_states)
-    policy = FasterPolicy(n, q, rand_policy, max_rollout_steps, m, max_itr, search_depth, c, beta, expanded)
+    eps = 0.1
+    policy = FasterPolicy(n, q, rand_policy, max_rollout_steps, m, max_itr, search_depth, c, beta, expanded, eps)
 
  
     return fast_monte_carlo_tree_search(policy, s)
@@ -287,12 +292,13 @@ function fast_select_action_diff_heur(m, s)
     n = zeros(Int, num_states, 4)
     q = zeros(Float64, num_states, 4)
     max_rollout_steps = 20
-    max_itr = 1000 # NOT USED anymore 
+    max_itr = 1000 # NOT USED anymore. Just 40 ms timeout used
     search_depth = 30
     c = 1.0*(100 + 250) # from the rollout of # 1
     beta = 0.25
     expanded = falses(num_states)
-    policy = FasterPolicy(n, q, heuristic_policy, max_rollout_steps, m, max_itr, search_depth, c, beta, expanded)
+    eps = 0.5 # epsilon greed for heuristic to sometimes pick random
+    policy = FasterPolicy(n, q, heuristic_policy, max_rollout_steps, m, max_itr, search_depth, c, beta, expanded, eps)
 
     return fast_monte_carlo_tree_search(policy, s)
 end
@@ -332,7 +338,46 @@ fast_select_action(m, SA[35,35])
 # Question 6
 ############
 
-HW3.evaluate(fast_select_action, "owen.kranz@colorado.edu", time=true)
+
+function make_select_action(; max_rollout_steps=20, search_depth=10, c=350.0, beta=0.25, eps=0.5, rollout_fn=heuristic_policy)
+    return function(m, s)
+        num_states = length(states(m))
+        n = zeros(Int, num_states, 4)
+        q = zeros(Float64, num_states, 4)
+        expanded = falses(num_states)
+        policy = FasterPolicy(n, q, rollout_fn, max_rollout_steps, m, 1000, search_depth, c, beta, expanded, eps)
+        return fast_monte_carlo_tree_search(policy, s)
+    end
+end
+
+# Now define your parameter sweeps
+configs = [
+    (name="shallow_low_c",    depth=5,  c=100.0, beta=0.25, steps=10, eps=0.3),
+    (name="shallow_high_c",   depth=5,  c=350.0, beta=0.25, steps=10, eps=0.3),
+    (name="mid_depth_low_c",  depth=10, c=100.0, beta=0.25, steps=15, eps=0.5),
+    (name="mid_depth_high_c", depth=10, c=350.0, beta=0.25, steps=15, eps=0.5),
+    (name="deep_low_c",       depth=20, c=100.0, beta=0.25, steps=20, eps=0.5),
+    (name="low_beta",         depth=10, c=200.0, beta=0.10, steps=15, eps=0.3),
+    (name="high_beta",        depth=10, c=200.0, beta=0.50, steps=15, eps=0.3),
+    (name="rand_rollout",     depth=10, c=200.0, beta=0.25, steps=15, eps=0.0),
+]
+
+for cfg in configs
+    println("Running: $(cfg.name)")
+    sa = make_select_action(
+        max_rollout_steps=cfg.steps,
+        search_depth=cfg.depth,
+        c=cfg.c,
+        beta=cfg.beta,
+        eps=cfg.eps
+    )
+    # warmup
+    sa(m, SA[35,35])
+    result = HW3.evaluate(sa, "owen.kranz@colorado.edu", fname="results_$(cfg.name).json")
+    println("  Score: $(result.score)")
+end
+
+#HW3.evaluate(fast_select_action_diff_heur, "owen.kranz@colorado.edu", time=true)
 
 # If you want to see roughly what's in the evaluate function (with the timing code removed), check sanitized_evaluate.jl
 
