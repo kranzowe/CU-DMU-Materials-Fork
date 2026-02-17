@@ -6,7 +6,6 @@ using StaticArrays: SA
 using Statistics: mean, std
 using BenchmarkTools: @btime
 using LinearAlgebra
-
 ##############
 # Instructions
 ##############
@@ -179,6 +178,56 @@ function fast_monte_carlo_tree_search(policy::FasterPolicy, s::S) where {S}
 
 end
 
+function threaded_fast_monte_carlo_tree_search(policy::FasterPolicy, s::S, num_states::Int64, env::DenseGridWorld) where {S}
+
+    num_threads = Threads.nthreads()
+
+    # so gonna make a bunch of N and Q, one for each thread
+    N_big = [zeros(Int64, num_states, 4) for _ in 1:num_threads]
+    Q_big = [zeros(Float64, num_states, 4) for _ in 1:num_threads]
+    expanded_big = [falses(num_states) for _ in 1:num_threads]
+
+    Threads.@threads for tid in 1:num_threads
+        threads_policy = FasterPolicy(N_big[tid], Q_big[tid], policy.policy_function, policy.max_rollout_steps,
+                                    env, policy.max_itr, policy.depth, policy.c, policy.beta, expanded_big[tid], policy.eps)
+
+        #ref policy = FasterPolicy(n, q, rand_policy, max_rollout_steps, m, max_itr, search_depth, c, beta, expanded, eps)
+
+        start = time_ns()
+    
+        while time_ns() < start + 20_000_000 # you can replace the above line with this if you want to limit this loop to run within 40ms
+    # 
+    #for k in 1:policy.max_itr
+            fast_simulate!(threads_policy, s)
+        end
+    end
+
+    # gotta merge... this is tricky. needed some AI help for sure here
+    # only mergin for this state
+    si = stateindex(policy.env, s)
+    Q = zeros(Float64, 4)
+    N = zeros(Int64, 4)
+
+    for tid in 1:num_threads
+        for ai in 1:4
+            n = N_big[tid][si, ai]
+            N[ai] += n
+            Q[ai] += n * Q_big[tid][si, ai]
+        end
+    end
+        # gotta weighted average it so it dont get weird says ai
+    for ai in 1:4
+        if N[ai] > 0
+            Q[ai] /= N[ai]
+        end
+    end
+
+    # okay julia is pretty fresh this is cool syntax
+    ai = argmax(Q)
+    return actions(policy.env)[ai]
+
+end
+
 function explore(p::Policy, s::S) where {S}
     Ns = sum(a -> get(p.N, (s,a), 0), actions(p.env))
     return argmax(a -> get(p.Q, (s,a), 0.0) + (p.c * (Ns^p.beta)/(1e-6 + sqrt(get(p.N, (s,a), 0)))), actions(p.env))
@@ -302,6 +351,7 @@ function fast_select_action_diff_heur(m, s)
 
     return fast_monte_carlo_tree_search(policy, s)
 end
+
 # call a few to precompile
 # select_action(m, SA[35,35])
 # select_action(m, SA[35,35])
@@ -338,6 +388,7 @@ fast_select_action(m, SA[35,35])
 # Question 6
 ############
 
+println("DETECTING THREADS: ", Threads.nthreads())
 
 function make_select_action(; max_rollout_steps=20, search_depth=10, c=350.0, beta=0.25, eps=0.5, rollout_fn=heuristic_policy)
     return function(m, s)
@@ -346,7 +397,7 @@ function make_select_action(; max_rollout_steps=20, search_depth=10, c=350.0, be
         q = zeros(Float64, num_states, 4)
         expanded = falses(num_states)
         policy = FasterPolicy(n, q, rollout_fn, max_rollout_steps, m, 1000, search_depth, c, beta, expanded, eps)
-        return fast_monte_carlo_tree_search(policy, s)
+        return threaded_fast_monte_carlo_tree_search(policy, s, num_states, m)
     end
 end
 
@@ -373,7 +424,7 @@ for cfg in configs
     )
     # warmup
     sa(m, SA[35,35])
-    result = HW3.evaluate(sa, "owen.kranz@colorado.edu", fname="results_$(cfg.name).json")
+    result = HW3.evaluate(sa, "owen.kranz@colorado.edu", time = true, fname="results_$(cfg.name).json")
     println("  Score: $(result.score)")
 end
 
