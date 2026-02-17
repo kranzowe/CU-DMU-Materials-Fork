@@ -476,12 +476,11 @@ fast_select_action(m, SA[35,35])
 
 configs = [
     # Depth sweep (c=200, beta=0.25, steps=10, eps=0.3)
-    (name="depth_3",          depth=3,  c=200.0, beta=0.25, steps=10, eps=0.3),
     (name="depth_5",          depth=5,  c=200.0, beta=0.25, steps=10, eps=0.3),
-    (name="depth_7",          depth=7,  c=200.0, beta=0.25, steps=10, eps=0.3),
     (name="depth_10",         depth=10, c=200.0, beta=0.25, steps=10, eps=0.3),
     (name="depth_15",         depth=15, c=200.0, beta=0.25, steps=10, eps=0.3),
     (name="depth_20",         depth=20, c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="depth_25",         depth=25, c=200.0, beta=0.25, steps=10, eps=0.3),
 
     # C sweep (depth=5, beta=0.25, steps=10, eps=0.3)
     (name="c_10",             depth=5,  c=10.0,   beta=0.25, steps=10, eps=0.3),
