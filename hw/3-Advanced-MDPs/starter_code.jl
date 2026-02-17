@@ -476,11 +476,10 @@ fast_select_action(m, SA[35,35])
 
 configs = [
     # Depth sweep (c=200, beta=0.25, steps=10, eps=0.3)
-    (name="depth_5",          depth=5,  c=200.0, beta=0.25, steps=10, eps=0.3),
-    (name="depth_10",         depth=10, c=200.0, beta=0.25, steps=10, eps=0.3),
-    (name="depth_15",         depth=15, c=200.0, beta=0.25, steps=10, eps=0.3),
-    (name="depth_20",         depth=20, c=200.0, beta=0.25, steps=10, eps=0.3),
-    (name="depth_25",         depth=25, c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="depth_10",         depth=10, c=100.0, beta=0.25, steps=10, eps=0.5),
+    (name="depth_15",         depth=15, c=100.0, beta=0.25, steps=10, eps=0.5),
+    (name="depth_20",         depth=20, c=100.0, beta=0.25, steps=10, eps=0.5),
+    (name="depth_25",         depth=25, c=100.0, beta=0.25, steps=10, eps=0.5),
 
     # C sweep (depth=5, beta=0.25, steps=10, eps=0.3)
     (name="c_10",             depth=5,  c=10.0,   beta=0.25, steps=10, eps=0.3),
@@ -531,7 +530,7 @@ POMDPs.action(warmup_policy, SA[35,35])
 for cfg in configs
     println("Running: $(cfg.name)")
     solver = MySolverThingy(cfg.depth, cfg.steps, cfg.c, cfg.beta, cfg.eps)
-    result = HW3.evaluate(solver, "owen.kranz@colorado.edu", fname="solver_results_$(cfg.name).json")
+    result = HW3.evaluate(solver, "owen.kranz@colorado.edu", time = true, fname="solver_results_$(cfg.name).json")
     println("  Score: $(result.score)")
 end
 
