@@ -390,7 +390,7 @@ fast_select_action(m, SA[35,35])
 
 println("DETECTING THREADS: ", Threads.nthreads())
 
-function make_select_action(; max_rollout_steps=20, search_depth=10, c=350.0, beta=0.25, eps=0.5, rollout_fn=heuristic_policy)
+function threaded_make_select_action(; max_rollout_steps=20, search_depth=10, c=350.0, beta=0.25, eps=0.5, rollout_fn=heuristic_policy)
     return function(m, s)
         num_states = length(states(m))
         n = zeros(Int, num_states, 4)
@@ -398,6 +398,45 @@ function make_select_action(; max_rollout_steps=20, search_depth=10, c=350.0, be
         expanded = falses(num_states)
         policy = FasterPolicy(n, q, rollout_fn, max_rollout_steps, m, 1000, search_depth, c, beta, expanded, eps)
         return threaded_fast_monte_carlo_tree_search(policy, s, num_states, m)
+    end
+end
+
+# Now define your parameter sweeps
+configs = [
+    (name="shallow_low_c",    depth=5,  c=100.0, beta=0.25, steps=10, eps=0.3),
+    (name="shallow_high_c",   depth=5,  c=350.0, beta=0.25, steps=10, eps=0.3),
+    (name="mid_depth_low_c",  depth=10, c=100.0, beta=0.25, steps=15, eps=0.5),
+    (name="mid_depth_high_c", depth=10, c=350.0, beta=0.25, steps=15, eps=0.5),
+    (name="deep_low_c",       depth=20, c=100.0, beta=0.25, steps=20, eps=0.5),
+    (name="low_beta",         depth=10, c=200.0, beta=0.10, steps=15, eps=0.3),
+    (name="high_beta",        depth=10, c=200.0, beta=0.50, steps=15, eps=0.3),
+    (name="rand_rollout",     depth=10, c=200.0, beta=0.25, steps=15, eps=0.0),
+]
+
+for cfg in configs
+    println("Running: $(cfg.name)")
+    sa = threaded_make_select_action(
+        max_rollout_steps=cfg.steps,
+        search_depth=cfg.depth,
+        c=cfg.c,
+        beta=cfg.beta,
+        eps=cfg.eps
+    )
+    # warmup
+    sa(m, SA[35,35])
+    result = HW3.evaluate(sa, "owen.kranz@colorado.edu", time = true, fname="threaded_results_$(cfg.name).json")
+    println("  Score: $(result.score)")
+end
+
+## regular
+function make_select_action(; max_rollout_steps=20, search_depth=10, c=350.0, beta=0.25, eps=0.5, rollout_fn=heuristic_policy)
+    return function(m, s)
+        num_states = length(states(m))
+        n = zeros(Int, num_states, 4)
+        q = zeros(Float64, num_states, 4)
+        expanded = falses(num_states)
+        policy = FasterPolicy(n, q, rollout_fn, max_rollout_steps, m, 1000, search_depth, c, beta, expanded, eps)
+        return fast_monte_carlo_tree_search(policy, s)
     end
 end
 
