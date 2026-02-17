@@ -476,18 +476,18 @@ fast_select_action(m, SA[35,35])
 
 configs = [
     # Depth sweep (c=200, beta=0.25, steps=10, eps=0.3)
-    (name="depth_10",         depth=10, c=100.0, beta=0.25, steps=10, eps=0.5),
-    (name="depth_15",         depth=15, c=100.0, beta=0.25, steps=10, eps=0.5),
-    (name="depth_20",         depth=20, c=100.0, beta=0.25, steps=10, eps=0.5),
-    (name="depth_25",         depth=25, c=100.0, beta=0.25, steps=10, eps=0.5),
+    # (name="depth_10",         depth=10, c=100.0, beta=0.25, steps=10, eps=0.5),
+    # (name="depth_15",         depth=15, c=100.0, beta=0.25, steps=10, eps=0.5),
+    # (name="depth_20",         depth=20, c=100.0, beta=0.25, steps=10, eps=0.5),
+    # (name="depth_25",         depth=25, c=100.0, beta=0.25, steps=10, eps=0.5),
 
     # C sweep (depth=5, beta=0.25, steps=10, eps=0.3)
-    (name="c_10",             depth=5,  c=10.0,   beta=0.25, steps=10, eps=0.3),
-    (name="c_50",             depth=5,  c=50.0,   beta=0.25, steps=10, eps=0.3),
-    (name="c_100",            depth=5,  c=100.0,  beta=0.25, steps=10, eps=0.3),
-    (name="c_200",            depth=5,  c=200.0,  beta=0.25, steps=10, eps=0.3),
-    (name="c_500",            depth=5,  c=500.0,  beta=0.25, steps=10, eps=0.3),
-    (name="c_1000",           depth=5,  c=1000.0, beta=0.25, steps=10, eps=0.3),
+    (name="c_10",             depth=20,  c=10.0,   beta=0.25, steps=10, eps=0.3),
+    (name="c_50",             depth=20,  c=50.0,   beta=0.25, steps=10, eps=0.3),
+    (name="c_100",            depth=20,  c=100.0,  beta=0.25, steps=10, eps=0.3),
+    (name="c_200",            depth=20,  c=200.0,  beta=0.25, steps=10, eps=0.3),
+    (name="c_500",            depth=20,  c=500.0,  beta=0.25, steps=10, eps=0.3),
+    (name="c_1000",           depth=20,  c=1000.0, beta=0.25, steps=10, eps=0.3),
 
     # Beta sweep (depth=5, c=200, steps=10, eps=0.3)
     (name="beta_0.05",        depth=5,  c=200.0, beta=0.05, steps=10, eps=0.3),
