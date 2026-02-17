@@ -34,7 +34,7 @@ function rollout(mdp, policy_function, s0, max_steps=100, eps=0)
     while !isterminal(mdp, s) && t < max_steps
         a = policy_function(mdp, s, eps)
         s, r = @gen(:sp, :r)(mdp, s, a)
-        r_total += discount(m)^t * r
+        r_total += discount(mdp)^t * r
         t += 1
     end
     return r_total # replace this with the reward
@@ -403,6 +403,7 @@ function solver_simulate!(policy::SolverPolicy, s::S, d::Int64 = policy.solver.d
 
     return q
 end
+
 
 function select_action(m, s, visualize=false)
 
