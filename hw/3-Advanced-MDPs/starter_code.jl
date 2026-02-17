@@ -172,6 +172,21 @@ function POMDPs.solve(solver::MySolverThingy, m::DenseGridWorld)
     expanded = falses(num_states)
     
     # idk what other precomputation to do...
+    # okay gonna try just random rollouts till we run outta time
+
+    start = time_ns()
+
+    while time_ns() < start + 40_000_000
+        # pick random state and action
+        si = rand(1:num_states)
+        s = states(m)[si]
+        ai = rand(1:4)
+        N[si,ai] += 1
+        r = rollout(m, heuristic_policy, s, solver.max_rollout_steps, solver.eps)
+        Q[si, ai] += (r - Q[si, ai]) / N[si, ai]
+
+    end
+
     
     return SolverPolicy(N, Q, heuristic_policy, expanded, m, solver)
 end
