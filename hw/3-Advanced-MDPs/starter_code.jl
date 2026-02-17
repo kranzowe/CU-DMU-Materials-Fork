@@ -413,20 +413,20 @@ configs = [
     (name="rand_rollout",     depth=10, c=200.0, beta=0.25, steps=15, eps=0.0),
 ]
 
-for cfg in configs
-    println("Running: $(cfg.name)")
-    sa = threaded_make_select_action(
-        max_rollout_steps=cfg.steps,
-        search_depth=cfg.depth,
-        c=cfg.c,
-        beta=cfg.beta,
-        eps=cfg.eps
-    )
-    # warmup
-    sa(m, SA[35,35])
-    result = HW3.evaluate(sa, "owen.kranz@colorado.edu", time = true, fname="threaded_results_$(cfg.name).json")
-    println("  Score: $(result.score)")
-end
+# for cfg in configs
+#     println("Running: $(cfg.name)")
+#     sa = threaded_make_select_action(
+#         max_rollout_steps=cfg.steps,
+#         search_depth=cfg.depth,
+#         c=cfg.c,
+#         beta=cfg.beta,
+#         eps=cfg.eps
+#     )
+#     # warmup
+#     sa(m, SA[35,35])
+#     result = HW3.evaluate(sa, "owen.kranz@colorado.edu", time = true, fname="threaded_results_$(cfg.name).json")
+#     println("  Score: $(result.score)")
+# end
 
 ## regular
 function make_select_action(; max_rollout_steps=20, search_depth=10, c=350.0, beta=0.25, eps=0.5, rollout_fn=heuristic_policy)
