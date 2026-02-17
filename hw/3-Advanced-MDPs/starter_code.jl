@@ -498,11 +498,11 @@ configs = [
     # (name="eps_1.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=1.0),
 
     # Beta sweep (depth=5, c=200, steps=10, eps=0.3)
-    (name="beta_0.05",        depth=20,  c=100.0, beta=0.05, steps=10, eps=0.0),
-    (name="beta_0.10",        depth=20,  c=100.0, beta=0.10, steps=10, eps=0.0),
+    (name="beta_0.18",        depth=20,  c=100.0, beta=0.18, steps=10, eps=0.0),
+    (name="beta_0.20",        depth=20,  c=100.0, beta=0.20, steps=10, eps=0.0),
     (name="beta_0.25",        depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
-    (name="beta_0.50",        depth=20,  c=100.0, beta=0.50, steps=10, eps=0.0),
-    (name="beta_0.75",        depth=20,  c=100.0, beta=0.75, steps=10, eps=0.0),
+    (name="beta_0.30",        depth=20,  c=100.0, beta=0.30, steps=10, eps=0.0),
+    (name="beta_0.35",        depth=20,  c=100.0, beta=0.35, steps=10, eps=0.0),
 
     # Rollout steps sweep (depth=5, c=200, beta=0.25, eps=0.3)
     (name="steps_3",          depth=20,  c=100.0, beta=0.25, steps=3,  eps=0.0),
