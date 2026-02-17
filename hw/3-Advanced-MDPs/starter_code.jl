@@ -490,26 +490,26 @@ configs = [
     # (name="c_1000",           depth=20,  c=1000.0, beta=0.25, steps=10, eps=0.3),
 
     # Epsilon sweep (depth=5, c=200, beta=0.25, steps=10)
-    (name="eps_0.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
-    (name="eps_0.1",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.1),
-    (name="eps_0.3",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.3),
-    (name="eps_0.5",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.5),
-    (name="eps_0.7",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.7),
-    (name="eps_1.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=1.0),
+    # (name="eps_0.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
+    # (name="eps_0.1",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.1),
+    # (name="eps_0.3",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.3),
+    # (name="eps_0.5",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.5),
+    # (name="eps_0.7",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.7),
+    # (name="eps_1.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=1.0),
 
     # Beta sweep (depth=5, c=200, steps=10, eps=0.3)
-    (name="beta_0.05",        depth=20,  c=100.0, beta=0.05, steps=10, eps=0.3),
-    (name="beta_0.10",        depth=20,  c=100.0, beta=0.10, steps=10, eps=0.3),
-    (name="beta_0.25",        depth=20,  c=100.0, beta=0.25, steps=10, eps=0.3),
-    (name="beta_0.50",        depth=20,  c=100.0, beta=0.50, steps=10, eps=0.3),
-    (name="beta_0.75",        depth=20,  c=100.0, beta=0.75, steps=10, eps=0.3),
+    (name="beta_0.05",        depth=20,  c=100.0, beta=0.05, steps=10, eps=0.0),
+    (name="beta_0.10",        depth=20,  c=100.0, beta=0.10, steps=10, eps=0.0),
+    (name="beta_0.25",        depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
+    (name="beta_0.50",        depth=20,  c=100.0, beta=0.50, steps=10, eps=0.0),
+    (name="beta_0.75",        depth=20,  c=100.0, beta=0.75, steps=10, eps=0.0),
 
     # Rollout steps sweep (depth=5, c=200, beta=0.25, eps=0.3)
-    (name="steps_3",          depth=20,  c=100.0, beta=0.25, steps=3,  eps=0.3),
-    (name="steps_5",          depth=20,  c=100.0, beta=0.25, steps=5,  eps=0.3),
-    (name="steps_10",         depth=20,  c=100.0, beta=0.25, steps=10, eps=0.3),
-    (name="steps_20",         depth=20,  c=100.0, beta=0.25, steps=20, eps=0.3),
-    (name="steps_30",         depth=20,  c=100.0, beta=0.25, steps=30, eps=0.3),
+    (name="steps_3",          depth=20,  c=100.0, beta=0.25, steps=3,  eps=0.0),
+    (name="steps_5",          depth=20,  c=100.0, beta=0.25, steps=5,  eps=0.0),
+    (name="steps_10",         depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
+    (name="steps_20",         depth=20,  c=100.0, beta=0.25, steps=20, eps=0.0),
+    (name="steps_30",         depth=20,  c=100.0, beta=0.25, steps=30, eps=0.0),
 
 
 
