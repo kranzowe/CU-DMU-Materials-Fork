@@ -49,43 +49,20 @@ function heuristic_policy(m, s, eps)
     if rand() < eps
         return rand(actions(m))
     end
-    # just go to 20, 20
-    # use the module to go to the nearest multiple of 2020
-    possible_terminal_states = [[20, 20], [20, 40], [40, 20], [40, 40]]
-    diffs_terminal = [[0, 0], [0, 0], [0, 0], [0, 0]]
-    norm_diffs = [0.0, 0.0, 0.0, 0.0]
-    for (i, term_s) in enumerate(possible_terminal_states)
-        diffs_terminal[i] = term_s - s
-        norm_diffs[i] = norm(diffs_terminal[i])
-    end
-    #@show diffs_terminal
-    #@show norm_diffs
-    min_diff_index = argmin(norm_diffs)
-
-    diff_s = possible_terminal_states[min_diff_index] - s
-
-    abs_diff = diff_s .* diff_s
-    max_element = argmax(abs_diff)
-
-    if max_element == 1
-        #move left or right
-        if diff_s[1] > 0
-            # state is right
-            return :right
-        else
-            return :left
-        end
-    else
-        #move up or down
-        if diff_s[2] > 0
-            # state is right
-            return :up
-        else
-            return :down
-        end
-    end
-    #cathc all
     
+    # modulo to nearest 20, clamp
+    target_x = clamp(round(Int, s[1] / 20) * 20, 20, 80)
+    target_y = clamp(round(Int, s[2] / 20) * 20, 20, 80)
+    
+    dx = target_x - s[1]
+    dy = target_y - s[2]
+    
+    # ai cleanup
+    if abs(dx) >= abs(dy)
+        return dx > 0 ? :right : :left
+    else
+        return dy > 0 ? :up : :down
+    end
 end
 
 
@@ -412,7 +389,7 @@ function select_action(m, s, visualize=false)
     t = Dict{Tuple{statetype(m), actiontype(m), statetype(m)}, Int}()
     max_rollout_steps = 20
     max_itr = 7
-    search_depth = 3
+    search_depth = 1
     c = 100.0 # from the rollout of # 1
     beta = 0.25
     policy = Policy(n, q, t, rand_policy, max_rollout_steps, m, max_itr, search_depth, c, beta)

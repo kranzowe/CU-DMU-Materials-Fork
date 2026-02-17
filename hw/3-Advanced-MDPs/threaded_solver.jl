@@ -177,60 +177,78 @@ end
 
 println("DETECTING THREADS: ", Threads.nthreads())
 
-configs = [
-    # Baseline
-    (name="baseline",          depth=30, c=50.0, beta=0.18, steps=15, eps=0.2),
+# Search ranges
+const PARAM_RANGES = (
+    depth = (20, 40),        # min, max (integers)
+    c     = (25.0, 150.0),
+    beta  = (0.10, 0.30),
+    steps = (5, 30),         # min, max (integers)
+    eps   = (0.0, 0.8),
+)
 
-    # Tweak depth
-    (name="depth_28",          depth=28, c=50.0, beta=0.18, steps=15, eps=0.2),
-    (name="depth_33",          depth=33, c=50.0, beta=0.18, steps=15, eps=0.2),
-    (name="depth_37",          depth=37, c=50.0, beta=0.18, steps=15, eps=0.2),
+function random_config()
+    return (
+        depth = rand(PARAM_RANGES.depth[1]:PARAM_RANGES.depth[2]),
+        c     = round(rand() * (PARAM_RANGES.c[2]     - PARAM_RANGES.c[1])     + PARAM_RANGES.c[1],     digits=1),
+        beta  = round(rand() * (PARAM_RANGES.beta[2]  - PARAM_RANGES.beta[1])  + PARAM_RANGES.beta[1],  digits=3),
+        steps = rand(PARAM_RANGES.steps[1]:PARAM_RANGES.steps[2]),
+        eps   = round(rand() * (PARAM_RANGES.eps[2]   - PARAM_RANGES.eps[1])   + PARAM_RANGES.eps[1],   digits=3),
+    )
+end
 
-    # Tweak c
-    (name="c_25",              depth=30, c=25.0,  beta=0.18, steps=15, eps=0.2),
-    (name="c_75",              depth=30, c=75.0,  beta=0.18, steps=15, eps=0.2),
-    (name="c_100",             depth=30, c=100.0, beta=0.18, steps=15, eps=0.2),
-    (name="c_125",             depth=30, c=125.0, beta=0.18, steps=15, eps=0.2),
+function next_filename(prefix="threaded_solver_results", dir=".")
+    existing = filter(f -> startswith(f, prefix) && endswith(f, ".json"), readdir(dir))
+    indices = Int[]
+    for f in existing
+        m = match(Regex("$(prefix)_(\\d+)\\.json"), f)
+        if m !== nothing
+            push!(indices, parse(Int, m.captures[1]))
+        end
+    end
+    next_idx = isempty(indices) ? 1 : maximum(indices) + 1
+    return "$(prefix)_$(lpad(next_idx, 4, '0')).json"
+end
 
-    # Tweak beta
-    (name="beta_0.10",         depth=30, c=50.0, beta=0.10, steps=15, eps=0.2),
-    (name="beta_0.14",         depth=30, c=50.0, beta=0.14, steps=15, eps=0.2),
-    (name="beta_0.22",         depth=30, c=50.0, beta=0.22, steps=15, eps=0.2),
-    (name="beta_0.26",         depth=30, c=50.0, beta=0.26, steps=15, eps=0.2),
+function load_best_score(best_file="best_score.txt")
+    isfile(best_file) || return -Inf
+    return parse(Float64, strip(read(best_file, String)))
+end
 
-    # Tweak rollout steps
-    (name="steps_5",           depth=30, c=50.0, beta=0.18, steps=5,  eps=0.2),
-    (name="steps_10",          depth=30, c=50.0, beta=0.18, steps=10, eps=0.2),
-    (name="steps_20",          depth=30, c=50.0, beta=0.18, steps=20, eps=0.2),
-    (name="steps_25",          depth=30, c=50.0, beta=0.18, steps=25, eps=0.2),
+function save_best_score(score, best_file="best_score.txt")
+    open(best_file, "w") do f
+        println(f, score)
+    end
+end
 
-    # Tweak epsilon
-    (name="eps_0.0",           depth=30, c=50.0, beta=0.18, steps=15, eps=0.0),
-    (name="eps_0.05",          depth=30, c=50.0, beta=0.18, steps=15, eps=0.05),
-    (name="eps_0.10",          depth=30, c=50.0, beta=0.18, steps=15, eps=0.10),
-    (name="eps_0.3",           depth=30, c=50.0, beta=0.18, steps=15, eps=0.3),
-    (name="eps_0.6",           depth=30, c=50.0, beta=0.18, steps=15, eps=0.6),
-    (name="eps_0.8",           depth=30, c=50.0, beta=0.18, steps=15, eps=0.8),
-
-    # Combined tweaks in promising directions
-    (name="deeper_less_c",     depth=30, c=25.0,  beta=0.18, steps=15, eps=0.2),
-    (name="deeper_more_steps", depth=30, c=50.0,  beta=0.18, steps=20, eps=0.2),
-    (name="low_c_low_beta",    depth=30, c=25.0,  beta=0.14, steps=15, eps=0.2),
-    (name="high_c_high_beta",  depth=30, c=75.0,  beta=0.22, steps=15, eps=0.2),
-    (name="aggressive",        depth=30, c=25.0,  beta=0.14, steps=20, eps=0.2),
-    (name="conservative",      depth=20, c=75.0,  beta=0.22, steps=10, eps=0.2),
-]
-# Warmup once with any config
+# Warmup
 warmup_solver = ThreadedMySolverThingy(5, 10, 200.0, 0.25, 0.3)
 warmup_m = DenseGridWorld(seed=1)
 warmup_policy = POMDPs.solve(warmup_solver, warmup_m)
 POMDPs.action(warmup_policy, SA[35,35])
 
-for cfg in configs
-    println("Running: $(cfg.name)")
+best_score = load_best_score()
+println("Starting random search. Current best score: $best_score")
+
+N_TRIALS = 200 
+
+for i in 1:N_TRIALS
+    cfg = random_config()
+    fname = next_filename()
+
+    println("\nTrial $i/$N_TRIALS")
+    println("  depth=$(cfg.depth), c=$(cfg.c), beta=$(cfg.beta), steps=$(cfg.steps), eps=$(cfg.eps)")
+    println("  Saving to: $fname")
+
     solver = ThreadedMySolverThingy(cfg.depth, cfg.steps, cfg.c, cfg.beta, cfg.eps)
-    result = HW3.evaluate(solver, "owen.kranz@colorado.edu", time = true, fname="threaded_solver_results_$(cfg.name).json")
-    println("  Score: $(result.score)")
+    result = HW3.evaluate(solver, "owen.kranz@colorado.edu", time=true, fname=fname)
+
+    println("  Score: $(result.score)  (best so far: $best_score)")
+
+    if result.score > best_score
+        best_score = result.score
+        save_best_score(best_score)
+        println("  *** New best! Saved to best_score.txt ***")
+    end
 end
 
-
+println("\nSearch complete. Best score achieved: $best_score")
