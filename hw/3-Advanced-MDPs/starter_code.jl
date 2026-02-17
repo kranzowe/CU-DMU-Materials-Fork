@@ -176,7 +176,7 @@ function POMDPs.solve(solver::MySolverThingy, m::DenseGridWorld)
 
     start = time_ns()
 
-    while time_ns() < start + 40_000_000
+    while time_ns() < start + 30_000_000
         # pick random state and action
         si = rand(1:num_states)
         s = states(m)[si]
@@ -410,9 +410,9 @@ function select_action(m, s, visualize=false)
     q = Dict{Tuple{statetype(m), actiontype(m)}, Float64}()
     t = Dict{Tuple{statetype(m), actiontype(m), statetype(m)}, Int}()
     max_rollout_steps = 20
-    max_itr = 1000
-    search_depth = 30
-    c = 1.0*(100 + 250) # from the rollout of # 1
+    max_itr = 7
+    search_depth = 3
+    c = 100.0 # from the rollout of # 1
     beta = 0.25
     policy = Policy(n, q, t, rand_policy, max_rollout_steps, m, max_itr, search_depth, c, beta)
 
@@ -465,7 +465,7 @@ fast_select_action(m, SA[35,35])
 
 
 #### answer prob 4:
-#select_action(m, SA[19,19], true)
+select_action(m, SA[19,19], true)
 ##### 
 
 ###### Q5 answer
@@ -489,65 +489,105 @@ fast_select_action(m, SA[35,35])
 ############
 
 
+# configs = [
+#     # Depth sweep (c=200, beta=0.25, steps=10, eps=0.3)
+#     # (name="depth_10",         depth=10, c=100.0, beta=0.25, steps=10, eps=0.5),
+#     # (name="depth_15",         depth=15, c=100.0, beta=0.25, steps=10, eps=0.5),
+#     # (name="depth_20",         depth=20, c=100.0, beta=0.25, steps=10, eps=0.5),
+#     # (name="depth_25",         depth=25, c=100.0, beta=0.25, steps=10, eps=0.5),
+
+#     # C sweep (depth=5, beta=0.25, steps=10, eps=0.3)
+#     # (name="c_10",             depth=20,  c=10.0,   beta=0.25, steps=10, eps=0.3),
+#     # (name="c_50",             depth=20,  c=50.0,   beta=0.25, steps=10, eps=0.3),
+#     # (name="c_100",            depth=20,  c=100.0,  beta=0.25, steps=10, eps=0.3),
+#     # (name="c_200",            depth=20,  c=200.0,  beta=0.25, steps=10, eps=0.3),
+#     # (name="c_500",            depth=20,  c=500.0,  beta=0.25, steps=10, eps=0.3),
+#     # (name="c_1000",           depth=20,  c=1000.0, beta=0.25, steps=10, eps=0.3),
+
+#     # Epsilon sweep (depth=5, c=200, beta=0.25, steps=10)
+#     # (name="eps_0.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
+#     # (name="eps_0.1",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.1),
+#     # (name="eps_0.3",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.3),
+#     # (name="eps_0.5",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.5),
+#     # (name="eps_0.7",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.7),
+#     # (name="eps_1.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=1.0),
+
+#     # # Beta sweep (depth=5, c=200, steps=10, eps=0.3)
+#     # (name="beta_0.22",        depth=20,  c=100.0, beta=0.22, steps=10, eps=0.0),
+#     # (name="beta_0.24",        depth=20,  c=100.0, beta=0.24, steps=10, eps=0.0),
+#     # (name="beta_0.25",        depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
+#     # (name="beta_0.26",        depth=20,  c=100.0, beta=0.26, steps=10, eps=0.0),
+#     # (name="beta_0.28",        depth=20,  c=100.0, beta=0.28, steps=10, eps=0.0),
+
+#     # # Rollout steps sweep (depth=5, c=200, beta=0.25, eps=0.3)
+#     # (name="steps_3",          depth=20,  c=100.0, beta=0.25, steps=3,  eps=0.0),
+#     # (name="steps_5",          depth=20,  c=100.0, beta=0.25, steps=5,  eps=0.0),
+#     # (name="steps_10",         depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
+#     # (name="steps_20",         depth=20,  c=100.0, beta=0.25, steps=20, eps=0.0),
+#     # (name="steps_30",         depth=20,  c=100.0, beta=0.25, steps=30, eps=0.0),
+
+#     # winner?
+#     (name="best1",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+#     (name="best2",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+#     (name="best3",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+#     (name="best4",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+#     (name="best5",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+#     (name="best6",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+#     (name="best7",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+#     (name="best8",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+#     (name="best9",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+
+
+
+#     # Promising combos (guesses at good regions)
+#     # (name="aggressive_shallow", depth=3,  c=50.0,  beta=0.10, steps=5,  eps=0.1),
+#     # (name="balanced_mid",       depth=7,  c=150.0, beta=0.25, steps=10, eps=0.3),
+#     # (name="explorative_mid",    depth=7,  c=500.0, beta=0.50, steps=10, eps=0.5),
+#     # (name="deep_conservative",  depth=15, c=100.0, beta=0.10, steps=5,  eps=0.1),
+#     # (name="wide_shallow",       depth=3,  c=300.0, beta=0.25, steps=15, eps=0.3),
+#     # (name="heuristic_heavy",    depth=5,  c=200.0, beta=0.25, steps=20, eps=0.0),
+#     # (name="random_heavy",       depth=5,  c=200.0, beta=0.25, steps=20, eps=1.0),
+#     # (name="tiny_fast",          depth=2,  c=100.0, beta=0.25, steps=3,  eps=0.2),
+# ]
+
 configs = [
-    # Depth sweep (c=200, beta=0.25, steps=10, eps=0.3)
-    # (name="depth_10",         depth=10, c=100.0, beta=0.25, steps=10, eps=0.5),
-    # (name="depth_15",         depth=15, c=100.0, beta=0.25, steps=10, eps=0.5),
-    # (name="depth_20",         depth=20, c=100.0, beta=0.25, steps=10, eps=0.5),
-    # (name="depth_25",         depth=25, c=100.0, beta=0.25, steps=10, eps=0.5),
-
-    # C sweep (depth=5, beta=0.25, steps=10, eps=0.3)
-    # (name="c_10",             depth=20,  c=10.0,   beta=0.25, steps=10, eps=0.3),
-    # (name="c_50",             depth=20,  c=50.0,   beta=0.25, steps=10, eps=0.3),
-    # (name="c_100",            depth=20,  c=100.0,  beta=0.25, steps=10, eps=0.3),
-    # (name="c_200",            depth=20,  c=200.0,  beta=0.25, steps=10, eps=0.3),
-    # (name="c_500",            depth=20,  c=500.0,  beta=0.25, steps=10, eps=0.3),
-    # (name="c_1000",           depth=20,  c=1000.0, beta=0.25, steps=10, eps=0.3),
-
-    # Epsilon sweep (depth=5, c=200, beta=0.25, steps=10)
-    # (name="eps_0.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
-    # (name="eps_0.1",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.1),
-    # (name="eps_0.3",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.3),
-    # (name="eps_0.5",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.5),
-    # (name="eps_0.7",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.7),
-    # (name="eps_1.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=1.0),
-
-    # # Beta sweep (depth=5, c=200, steps=10, eps=0.3)
-    # (name="beta_0.22",        depth=20,  c=100.0, beta=0.22, steps=10, eps=0.0),
-    # (name="beta_0.24",        depth=20,  c=100.0, beta=0.24, steps=10, eps=0.0),
-    # (name="beta_0.25",        depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
-    # (name="beta_0.26",        depth=20,  c=100.0, beta=0.26, steps=10, eps=0.0),
-    # (name="beta_0.28",        depth=20,  c=100.0, beta=0.28, steps=10, eps=0.0),
-
-    # # Rollout steps sweep (depth=5, c=200, beta=0.25, eps=0.3)
-    # (name="steps_3",          depth=20,  c=100.0, beta=0.25, steps=3,  eps=0.0),
-    # (name="steps_5",          depth=20,  c=100.0, beta=0.25, steps=5,  eps=0.0),
-    # (name="steps_10",         depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
-    # (name="steps_20",         depth=20,  c=100.0, beta=0.25, steps=20, eps=0.0),
-    # (name="steps_30",         depth=20,  c=100.0, beta=0.25, steps=30, eps=0.0),
-
-    # winner?
-    (name="best1",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="best2",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="best3",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="best4",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="best5",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="best6",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="best7",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="best8",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="best9",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
-
-
-
-    # Promising combos (guesses at good regions)
-    # (name="aggressive_shallow", depth=3,  c=50.0,  beta=0.10, steps=5,  eps=0.1),
-    # (name="balanced_mid",       depth=7,  c=150.0, beta=0.25, steps=10, eps=0.3),
-    # (name="explorative_mid",    depth=7,  c=500.0, beta=0.50, steps=10, eps=0.5),
-    # (name="deep_conservative",  depth=15, c=100.0, beta=0.10, steps=5,  eps=0.1),
-    # (name="wide_shallow",       depth=3,  c=300.0, beta=0.25, steps=15, eps=0.3),
-    # (name="heuristic_heavy",    depth=5,  c=200.0, beta=0.25, steps=20, eps=0.0),
-    # (name="random_heavy",       depth=5,  c=200.0, beta=0.25, steps=20, eps=1.0),
-    # (name="tiny_fast",          depth=2,  c=100.0, beta=0.25, steps=3,  eps=0.2),
+    # Baseline
+    (name="baseline",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.0),
+    
+    # Tweak depth
+    (name="depth_15",          depth=15, c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="depth_25",          depth=25, c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="depth_30",          depth=30, c=100.0, beta=0.24, steps=20, eps=0.0),
+    
+    # Tweak c
+    (name="c_50",              depth=20, c=50.0,  beta=0.24, steps=20, eps=0.0),
+    (name="c_75",              depth=20, c=75.0,  beta=0.24, steps=20, eps=0.0),
+    (name="c_125",             depth=20, c=125.0, beta=0.24, steps=20, eps=0.0),
+    (name="c_150",             depth=20, c=150.0, beta=0.24, steps=20, eps=0.0),
+    
+    # Tweak beta
+    (name="beta_0.15",         depth=20, c=100.0, beta=0.15, steps=20, eps=0.0),
+    (name="beta_0.20",         depth=20, c=100.0, beta=0.20, steps=20, eps=0.0),
+    (name="beta_0.28",         depth=20, c=100.0, beta=0.28, steps=20, eps=0.0),
+    (name="beta_0.32",         depth=20, c=100.0, beta=0.32, steps=20, eps=0.0),
+    
+    # Tweak rollout steps
+    (name="steps_10",          depth=20, c=100.0, beta=0.24, steps=10, eps=0.0),
+    (name="steps_15",          depth=20, c=100.0, beta=0.24, steps=15, eps=0.0),
+    (name="steps_25",          depth=20, c=100.0, beta=0.24, steps=25, eps=0.0),
+    (name="steps_30",          depth=20, c=100.0, beta=0.24, steps=30, eps=0.0),
+    
+    # Tiny bit of epsilon might help exploration
+    (name="eps_0.05",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.05),
+    (name="eps_0.10",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.10),
+    
+    # Combined tweaks in promising directions
+    (name="deeper_less_c",     depth=25, c=75.0,  beta=0.24, steps=20, eps=0.0),
+    (name="deeper_more_steps", depth=25, c=100.0, beta=0.24, steps=25, eps=0.0),
+    (name="low_c_low_beta",    depth=20, c=75.0,  beta=0.20, steps=20, eps=0.0),
+    (name="high_c_high_beta",  depth=20, c=125.0, beta=0.28, steps=20, eps=0.0),
+    (name="aggressive",        depth=25, c=75.0,  beta=0.20, steps=25, eps=0.0),
+    (name="conservative",      depth=15, c=125.0, beta=0.28, steps=15, eps=0.0),
 ]
 # Warmup once with any config
 warmup_solver = MySolverThingy(5, 10, 200.0, 0.25, 0.3)
