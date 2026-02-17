@@ -226,29 +226,32 @@ warmup_m = DenseGridWorld(seed=1)
 warmup_policy = POMDPs.solve(warmup_solver, warmup_m)
 POMDPs.action(warmup_policy, SA[35,35])
 
-best_score = load_best_score()
-println("Starting random search. Current best score: $best_score")
+function run_search(n_trials=200)
+    best_score = load_best_score()
+    println("Starting random search. Current best score: $best_score")
 
-N_TRIALS = 200 
+    for i in 1:n_trials
+        cfg = random_config()
+        fname = next_filename()
 
-for i in 1:N_TRIALS
-    cfg = random_config()
-    fname = next_filename()
+        println("\nTrial $i/$n_trials")
+        println("  depth=$(cfg.depth), c=$(cfg.c), beta=$(cfg.beta), steps=$(cfg.steps), eps=$(cfg.eps)")
+        println("  Saving to: $fname")
 
-    println("\nTrial $i/$N_TRIALS")
-    println("  depth=$(cfg.depth), c=$(cfg.c), beta=$(cfg.beta), steps=$(cfg.steps), eps=$(cfg.eps)")
-    println("  Saving to: $fname")
+        solver = ThreadedMySolverThingy(cfg.depth, cfg.steps, cfg.c, cfg.beta, cfg.eps)
+        result = HW3.evaluate(solver, "owen.kranz@colorado.edu", time=true, fname=fname)
 
-    solver = ThreadedMySolverThingy(cfg.depth, cfg.steps, cfg.c, cfg.beta, cfg.eps)
-    result = HW3.evaluate(solver, "owen.kranz@colorado.edu", time=true, fname=fname)
+        println("  Score: $(result.score)  (best so far: $best_score)")
 
-    println("  Score: $(result.score)  (best so far: $best_score)")
-
-    if result.score > best_score
-        best_score = result.score
-        save_best_score(best_score)
-        println("  *** New best! Saved to best_score.txt ***")
+        if result.score > best_score
+            best_score = result.score
+            save_best_score(best_score)
+            println("  *** New best! Saved to best_score.txt ***")
+        end
     end
+
+    println("\nSearch complete. Best score achieved: $best_score")
 end
 
-println("\nSearch complete. Best score achieved: $best_score")
+run_search(200)
+
