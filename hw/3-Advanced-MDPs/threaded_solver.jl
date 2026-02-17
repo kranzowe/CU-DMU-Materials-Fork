@@ -103,7 +103,7 @@ function POMDPs.action(policy::ThreadedSolverPolicy, s)
     start = time_ns()
 
     Threads.@threads for tid in 1:policy.num_threads
-        while time_ns() < start + 30_000_000
+        while time_ns() < start + 35_000_000
             threaded_solver_simulate!(policy, s, tid)
         end
     end
@@ -179,46 +179,46 @@ println("DETECTING THREADS: ", Threads.nthreads())
 
 configs = [
     # Baseline
-    (name="baseline",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.0),
-    
+    (name="baseline",          depth=30, c=50.0, beta=0.18, steps=15, eps=0.2),
+
     # Tweak depth
-    (name="depth_15",          depth=15, c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="depth_25",          depth=25, c=100.0, beta=0.24, steps=20, eps=0.0),
-    (name="depth_30",          depth=30, c=100.0, beta=0.24, steps=20, eps=0.0),
-    
+    (name="depth_28",          depth=28, c=50.0, beta=0.18, steps=15, eps=0.2),
+    (name="depth_33",          depth=33, c=50.0, beta=0.18, steps=15, eps=0.2),
+    (name="depth_37",          depth=37, c=50.0, beta=0.18, steps=15, eps=0.2),
+
     # Tweak c
-    (name="c_50",              depth=20, c=50.0,  beta=0.24, steps=20, eps=0.0),
-    (name="c_75",              depth=20, c=75.0,  beta=0.24, steps=20, eps=0.0),
-    (name="c_125",             depth=20, c=125.0, beta=0.24, steps=20, eps=0.0),
-    (name="c_150",             depth=20, c=150.0, beta=0.24, steps=20, eps=0.0),
-    
+    (name="c_25",              depth=30, c=25.0,  beta=0.18, steps=15, eps=0.2),
+    (name="c_75",              depth=30, c=75.0,  beta=0.18, steps=15, eps=0.2),
+    (name="c_100",             depth=30, c=100.0, beta=0.18, steps=15, eps=0.2),
+    (name="c_125",             depth=30, c=125.0, beta=0.18, steps=15, eps=0.2),
+
     # Tweak beta
-    (name="beta_0.15",         depth=20, c=100.0, beta=0.15, steps=20, eps=0.0),
-    (name="beta_0.20",         depth=20, c=100.0, beta=0.20, steps=20, eps=0.0),
-    (name="beta_0.28",         depth=20, c=100.0, beta=0.28, steps=20, eps=0.0),
-    (name="beta_0.32",         depth=20, c=100.0, beta=0.32, steps=20, eps=0.0),
-    
+    (name="beta_0.10",         depth=30, c=50.0, beta=0.10, steps=15, eps=0.2),
+    (name="beta_0.14",         depth=30, c=50.0, beta=0.14, steps=15, eps=0.2),
+    (name="beta_0.22",         depth=30, c=50.0, beta=0.22, steps=15, eps=0.2),
+    (name="beta_0.26",         depth=30, c=50.0, beta=0.26, steps=15, eps=0.2),
+
     # Tweak rollout steps
-    (name="steps_10",          depth=20, c=100.0, beta=0.24, steps=10, eps=0.0),
-    (name="steps_15",          depth=20, c=100.0, beta=0.24, steps=15, eps=0.0),
-    (name="steps_25",          depth=20, c=100.0, beta=0.24, steps=25, eps=0.0),
-    (name="steps_30",          depth=20, c=100.0, beta=0.24, steps=30, eps=0.0),
-    
-    # Tiny bit of epsilon might help exploration
-    (name="eps_0.05",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.05),
-    (name="eps_0.10",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.10),
-    (name="eps_0.3",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.3),
-    (name="eps_0.6",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.6),
-    (name="eps_0.8",          depth=20, c=100.0, beta=0.24, steps=20, eps=0.8),
-    (name="eps_1",          depth=20, c=100.0, beta=0.24, steps=20, eps=1.0),
-    
+    (name="steps_5",           depth=30, c=50.0, beta=0.18, steps=5,  eps=0.2),
+    (name="steps_10",          depth=30, c=50.0, beta=0.18, steps=10, eps=0.2),
+    (name="steps_20",          depth=30, c=50.0, beta=0.18, steps=20, eps=0.2),
+    (name="steps_25",          depth=30, c=50.0, beta=0.18, steps=25, eps=0.2),
+
+    # Tweak epsilon
+    (name="eps_0.0",           depth=30, c=50.0, beta=0.18, steps=15, eps=0.0),
+    (name="eps_0.05",          depth=30, c=50.0, beta=0.18, steps=15, eps=0.05),
+    (name="eps_0.10",          depth=30, c=50.0, beta=0.18, steps=15, eps=0.10),
+    (name="eps_0.3",           depth=30, c=50.0, beta=0.18, steps=15, eps=0.3),
+    (name="eps_0.6",           depth=30, c=50.0, beta=0.18, steps=15, eps=0.6),
+    (name="eps_0.8",           depth=30, c=50.0, beta=0.18, steps=15, eps=0.8),
+
     # Combined tweaks in promising directions
-    (name="deeper_less_c",     depth=25, c=75.0,  beta=0.24, steps=20, eps=0.0),
-    (name="deeper_more_steps", depth=25, c=100.0, beta=0.24, steps=25, eps=0.0),
-    (name="low_c_low_beta",    depth=20, c=75.0,  beta=0.20, steps=20, eps=0.0),
-    (name="high_c_high_beta",  depth=20, c=125.0, beta=0.28, steps=20, eps=0.0),
-    (name="aggressive",        depth=25, c=75.0,  beta=0.20, steps=25, eps=0.0),
-    (name="conservative",      depth=15, c=125.0, beta=0.28, steps=15, eps=0.0),
+    (name="deeper_less_c",     depth=30, c=25.0,  beta=0.18, steps=15, eps=0.2),
+    (name="deeper_more_steps", depth=30, c=50.0,  beta=0.18, steps=20, eps=0.2),
+    (name="low_c_low_beta",    depth=30, c=25.0,  beta=0.14, steps=15, eps=0.2),
+    (name="high_c_high_beta",  depth=30, c=75.0,  beta=0.22, steps=15, eps=0.2),
+    (name="aggressive",        depth=30, c=25.0,  beta=0.14, steps=20, eps=0.2),
+    (name="conservative",      depth=20, c=75.0,  beta=0.22, steps=10, eps=0.2),
 ]
 # Warmup once with any config
 warmup_solver = ThreadedMySolverThingy(5, 10, 200.0, 0.25, 0.3)
