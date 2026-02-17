@@ -1,4 +1,5 @@
 using DMUStudent.HW3: HW3, DenseGridWorld, visualize_tree
+using POMDPs
 using POMDPs: actions, @gen, isterminal, discount, statetype, actiontype, simulate, states, initialstate, stateindex
 using POMDPTools: render
 using D3Trees: inchrome, inbrowser
@@ -143,6 +144,50 @@ mutable struct FasterPolicy
     eps::Float64
 end
 
+# SOLVER ATTEMPT
+struct MySolverThingy <: POMDPs.Solver
+    depth::Int
+    max_rollout_steps::Int
+    c::Float64
+    beta::Float64
+    eps::Float64
+end
+
+struct SolverPolicy <: POMDPs.Policy
+    # persistent state that carries between steps
+    N::Matrix{Int}
+    Q::Matrix{Float64}
+    policy_function::Function # for da rollout
+
+    expanded::BitVector
+    env::DenseGridWorld
+    solver::MySolverThingy
+
+end
+
+function POMDPs.solve(solver::MySolverThingy, m::DenseGridWorld)
+    num_states = length(states(m))
+    N = zeros(Int, num_states, 4)
+    Q = zeros(Float64, num_states, 4)
+    expanded = falses(num_states)
+    
+    # idk what other precomputation to do...
+    
+    return SolverPolicy(N, Q, heuristic_policy, expanded, m, solver)
+end
+
+function POMDPs.action(policy::SolverPolicy, s)
+    si = stateindex(policy.env, s)
+    
+    start = time_ns()
+    while time_ns() < start + 40_000_000
+        solver_simulate!(policy, s)
+    end
+    
+    ai = argmax(a -> policy.Q[si, a], 1:4)
+    return actions(policy.env)[ai]
+end
+
 
 function monte_carlo_tree_search(policy::Policy, s::S, visualize::Bool) where {S}
 
@@ -247,6 +292,20 @@ function fast_explore(p::FasterPolicy, si::Int)
     return best_a
 end
 
+function solver_explore(p::SolverPolicy, si::Int)
+    Ns = p.N[si,1] + p.N[si,2] + p.N[si,3] + p.N[si,4]
+    best_a = 1
+    best_val = -Inf
+    @inbounds for ai in 1:4
+        val = p.Q[si, ai] + p.solver.c * (Ns^p.solver.beta) / (1e-6 + sqrt(p.N[si, ai]))
+        if val > best_val
+            best_val = val
+            best_a = ai
+        end
+    end
+    return best_a
+end
+
 function simulate!(policy::Policy, s::S, d::Int64 = policy.depth) where {S}
     if d <= 0
         return rollout(policy.env, policy.policy_function, s, policy.max_rollout_steps)
@@ -300,6 +359,32 @@ function fast_simulate!(policy::FasterPolicy, s::S, d::Int64 = policy.depth) whe
 
     N[si, ai] += 1
     Q[si,ai] += (q - Q[si,ai])/N[si,ai] # backs up Q apparent i dont get it
+
+    return q
+end
+
+function solver_simulate!(policy::SolverPolicy, s::S, d::Int64 = policy.solver.depth) where {S}
+    if d <= 0
+        return rollout(policy.env, policy.policy_function, s, policy.solver.max_rollout_steps, policy.solver.eps)
+    end
+    env, N, Q, c = policy.env, policy.N, policy.Q, policy.solver.c
+
+    A, gamma = actions(env), discount(env)
+
+    si = stateindex(env, s)
+    if !policy.expanded[si]
+        policy.expanded[si] = true
+        return rollout(env, policy.policy_function, s, policy.solver.max_rollout_steps, policy.solver.eps)
+    end
+
+    ai = solver_explore(policy, si)
+
+    s_prime, r = @gen(:sp, :r)(env, s, actions(env)[ai])
+
+    q = r + gamma * solver_simulate!(policy, s_prime, d-1)
+
+    N[si, ai] += 1
+    Q[si,ai] += (q - Q[si,ai])/N[si,ai]
 
     return q
 end
@@ -387,6 +472,69 @@ fast_select_action(m, SA[35,35])
 ############
 # Question 6
 ############
+
+
+configs = [
+    # Depth sweep (c=200, beta=0.25, steps=10, eps=0.3)
+    (name="depth_3",          depth=3,  c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="depth_5",          depth=5,  c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="depth_7",          depth=7,  c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="depth_10",         depth=10, c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="depth_15",         depth=15, c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="depth_20",         depth=20, c=200.0, beta=0.25, steps=10, eps=0.3),
+
+    # C sweep (depth=5, beta=0.25, steps=10, eps=0.3)
+    (name="c_10",             depth=5,  c=10.0,   beta=0.25, steps=10, eps=0.3),
+    (name="c_50",             depth=5,  c=50.0,   beta=0.25, steps=10, eps=0.3),
+    (name="c_100",            depth=5,  c=100.0,  beta=0.25, steps=10, eps=0.3),
+    (name="c_200",            depth=5,  c=200.0,  beta=0.25, steps=10, eps=0.3),
+    (name="c_500",            depth=5,  c=500.0,  beta=0.25, steps=10, eps=0.3),
+    (name="c_1000",           depth=5,  c=1000.0, beta=0.25, steps=10, eps=0.3),
+
+    # Beta sweep (depth=5, c=200, steps=10, eps=0.3)
+    (name="beta_0.05",        depth=5,  c=200.0, beta=0.05, steps=10, eps=0.3),
+    (name="beta_0.10",        depth=5,  c=200.0, beta=0.10, steps=10, eps=0.3),
+    (name="beta_0.25",        depth=5,  c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="beta_0.50",        depth=5,  c=200.0, beta=0.50, steps=10, eps=0.3),
+    (name="beta_0.75",        depth=5,  c=200.0, beta=0.75, steps=10, eps=0.3),
+
+    # Rollout steps sweep (depth=5, c=200, beta=0.25, eps=0.3)
+    (name="steps_3",          depth=5,  c=200.0, beta=0.25, steps=3,  eps=0.3),
+    (name="steps_5",          depth=5,  c=200.0, beta=0.25, steps=5,  eps=0.3),
+    (name="steps_10",         depth=5,  c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="steps_20",         depth=5,  c=200.0, beta=0.25, steps=20, eps=0.3),
+    (name="steps_30",         depth=5,  c=200.0, beta=0.25, steps=30, eps=0.3),
+
+    # Epsilon sweep (depth=5, c=200, beta=0.25, steps=10)
+    (name="eps_0.0",          depth=5,  c=200.0, beta=0.25, steps=10, eps=0.0),
+    (name="eps_0.1",          depth=5,  c=200.0, beta=0.25, steps=10, eps=0.1),
+    (name="eps_0.3",          depth=5,  c=200.0, beta=0.25, steps=10, eps=0.3),
+    (name="eps_0.5",          depth=5,  c=200.0, beta=0.25, steps=10, eps=0.5),
+    (name="eps_0.7",          depth=5,  c=200.0, beta=0.25, steps=10, eps=0.7),
+    (name="eps_1.0",          depth=5,  c=200.0, beta=0.25, steps=10, eps=1.0),
+
+    # Promising combos (guesses at good regions)
+    (name="aggressive_shallow", depth=3,  c=50.0,  beta=0.10, steps=5,  eps=0.1),
+    (name="balanced_mid",       depth=7,  c=150.0, beta=0.25, steps=10, eps=0.3),
+    (name="explorative_mid",    depth=7,  c=500.0, beta=0.50, steps=10, eps=0.5),
+    (name="deep_conservative",  depth=15, c=100.0, beta=0.10, steps=5,  eps=0.1),
+    (name="wide_shallow",       depth=3,  c=300.0, beta=0.25, steps=15, eps=0.3),
+    (name="heuristic_heavy",    depth=5,  c=200.0, beta=0.25, steps=20, eps=0.0),
+    (name="random_heavy",       depth=5,  c=200.0, beta=0.25, steps=20, eps=1.0),
+    (name="tiny_fast",          depth=2,  c=100.0, beta=0.25, steps=3,  eps=0.2),
+]
+# Warmup once with any config
+warmup_solver = MySolverThingy(5, 10, 200.0, 0.25, 0.3)
+warmup_m = DenseGridWorld(seed=1)
+warmup_policy = POMDPs.solve(warmup_solver, warmup_m)
+POMDPs.action(warmup_policy, SA[35,35])
+
+for cfg in configs
+    println("Running: $(cfg.name)")
+    solver = MySolverThingy(cfg.depth, cfg.steps, cfg.c, cfg.beta, cfg.eps)
+    result = HW3.evaluate(solver, "owen.kranz@colorado.edu", fname="solver_results_$(cfg.name).json")
+    println("  Score: $(result.score)")
+end
 
 println("DETECTING THREADS: ", Threads.nthreads())
 
