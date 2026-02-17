@@ -103,7 +103,7 @@ function POMDPs.action(policy::ThreadedSolverPolicy, s)
     start = time_ns()
 
     Threads.@threads for tid in 1:policy.num_threads
-        while time_ns() < start + 32_000_000
+        while time_ns() < start + 34_000_000
             threaded_solver_simulate!(policy, s, tid)
         end
     end
@@ -180,10 +180,10 @@ println("DETECTING THREADS: ", Threads.nthreads())
 # Search ranges
 const PARAM_RANGES = (
     depth = (20, 40),        # min, max (integers)
-    c     = (25.0, 150.0),
-    beta  = (0.10, 0.30),
-    steps = (5, 30),         # min, max (integers)
-    eps   = (0.0, 0.8),
+    c     = (25.0, 60.0),
+    beta  = (0.22, 0.30),
+    steps = (25, 30),         # min, max (integers)
+    eps   = (0.0, 0.3),
 )
 
 function random_config()
