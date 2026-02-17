@@ -497,19 +497,30 @@ configs = [
     # (name="eps_0.7",          depth=20,  c=100.0, beta=0.25, steps=10, eps=0.7),
     # (name="eps_1.0",          depth=20,  c=100.0, beta=0.25, steps=10, eps=1.0),
 
-    # Beta sweep (depth=5, c=200, steps=10, eps=0.3)
-    (name="beta_0.22",        depth=20,  c=100.0, beta=0.22, steps=10, eps=0.0),
-    (name="beta_0.24",        depth=20,  c=100.0, beta=0.24, steps=10, eps=0.0),
-    (name="beta_0.25",        depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
-    (name="beta_0.26",        depth=20,  c=100.0, beta=0.26, steps=10, eps=0.0),
-    (name="beta_0.28",        depth=20,  c=100.0, beta=0.28, steps=10, eps=0.0),
+    # # Beta sweep (depth=5, c=200, steps=10, eps=0.3)
+    # (name="beta_0.22",        depth=20,  c=100.0, beta=0.22, steps=10, eps=0.0),
+    # (name="beta_0.24",        depth=20,  c=100.0, beta=0.24, steps=10, eps=0.0),
+    # (name="beta_0.25",        depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
+    # (name="beta_0.26",        depth=20,  c=100.0, beta=0.26, steps=10, eps=0.0),
+    # (name="beta_0.28",        depth=20,  c=100.0, beta=0.28, steps=10, eps=0.0),
 
-    # Rollout steps sweep (depth=5, c=200, beta=0.25, eps=0.3)
-    (name="steps_3",          depth=20,  c=100.0, beta=0.25, steps=3,  eps=0.0),
-    (name="steps_5",          depth=20,  c=100.0, beta=0.25, steps=5,  eps=0.0),
-    (name="steps_10",         depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
-    (name="steps_20",         depth=20,  c=100.0, beta=0.25, steps=20, eps=0.0),
-    (name="steps_30",         depth=20,  c=100.0, beta=0.25, steps=30, eps=0.0),
+    # # Rollout steps sweep (depth=5, c=200, beta=0.25, eps=0.3)
+    # (name="steps_3",          depth=20,  c=100.0, beta=0.25, steps=3,  eps=0.0),
+    # (name="steps_5",          depth=20,  c=100.0, beta=0.25, steps=5,  eps=0.0),
+    # (name="steps_10",         depth=20,  c=100.0, beta=0.25, steps=10, eps=0.0),
+    # (name="steps_20",         depth=20,  c=100.0, beta=0.25, steps=20, eps=0.0),
+    # (name="steps_30",         depth=20,  c=100.0, beta=0.25, steps=30, eps=0.0),
+
+    # winner?
+    (name="best1",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="best2",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="best3",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="best4",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="best5",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="best6",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="best7",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="best8",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
+    (name="best9",         depth=20,  c=100.0, beta=0.24, steps=20, eps=0.0),
 
 
 
