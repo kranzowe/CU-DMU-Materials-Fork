@@ -32,8 +32,8 @@ function heuristic_policy(m, s, eps)
     end
     
     # modulo to nearest 20, clamp
-    target_x = clamp(round(Int, s[1] / 20) * 20, 20, 80)
-    target_y = clamp(round(Int, s[2] / 20) * 20, 20, 80)
+    target_x = clamp(round(Int, s[1] / 20) * 20, 20, 100)
+    target_y = clamp(round(Int, s[2] / 20) * 20, 20, 100)
     
     dx = target_x - s[1]
     dy = target_y - s[2]
