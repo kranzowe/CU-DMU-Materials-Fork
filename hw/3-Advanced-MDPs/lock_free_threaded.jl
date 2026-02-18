@@ -128,9 +128,18 @@ function shared_simulate!(policy::SharedSolverPolicy, s::S, d::Int64=policy.solv
     return q
 end
 
+println("DETECTING THREADS: ", Threads.nthreads())
 
+# Search ranges
+const PARAM_RANGES = (
+    depth = (20, 40),        # min, max (integers)
+    c     = (25.0, 60.0),
+    beta  = (0.22, 0.30),
+    steps = (25, 30),         # min, max (integers)
+    eps   = (0.0, 0.3),
+)
 
-function next_filename(prefix="threaded_solver_results", dir=".")
+function next_filename(prefix="shared_solver_results", dir=".")
     existing = filter(f -> startswith(f, prefix) && endswith(f, ".json"), readdir(dir))
     indices = Int[]
     for f in existing
@@ -142,7 +151,15 @@ function next_filename(prefix="threaded_solver_results", dir=".")
     next_idx = isempty(indices) ? 1 : maximum(indices) + 1
     return "$(prefix)_$(lpad(next_idx, 4, '0')).json"
 end
-
+function random_config()
+    return (
+        depth = rand(PARAM_RANGES.depth[1]:PARAM_RANGES.depth[2]),
+        c     = round(rand() * (PARAM_RANGES.c[2]     - PARAM_RANGES.c[1])     + PARAM_RANGES.c[1],     digits=1),
+        beta  = round(rand() * (PARAM_RANGES.beta[2]  - PARAM_RANGES.beta[1])  + PARAM_RANGES.beta[1],  digits=3),
+        steps = rand(PARAM_RANGES.steps[1]:PARAM_RANGES.steps[2]),
+        eps   = round(rand() * (PARAM_RANGES.eps[2]   - PARAM_RANGES.eps[1])   + PARAM_RANGES.eps[1],   digits=3),
+    )
+end
 function load_best_score(best_file="best_score.txt")
     isfile(best_file) || return -Inf
     return parse(Float64, strip(read(best_file, String)))
@@ -155,7 +172,7 @@ function save_best_score(score, best_file="best_score.txt")
 end
 
 # Warmup
-warmup_solver = ThreadedMySolverThingy(5, 10, 200.0, 0.25, 0.3)
+warmup_solver = SharedMySolverThingy(5, 10, 200.0, 0.25, 0.3)
 warmup_m = DenseGridWorld(seed=1)
 warmup_policy = POMDPs.solve(warmup_solver, warmup_m)
 POMDPs.action(warmup_policy, SA[35,35])
@@ -172,7 +189,7 @@ function run_search(n_trials=200)
         println("  depth=$(cfg.depth), c=$(cfg.c), beta=$(cfg.beta), steps=$(cfg.steps), eps=$(cfg.eps)")
         println("  Saving to: $fname")
 
-        solver = ThreadedMySolverThingy(cfg.depth, cfg.steps, cfg.c, cfg.beta, cfg.eps)
+        solver = SharedMySolverThingy(cfg.depth, cfg.steps, cfg.c, cfg.beta, cfg.eps)
         result = HW3.evaluate(solver, "owen.kranz@colorado.edu", time=true, fname=fname)
 
         println("  Score: $(result.score)  (best so far: $best_score)")
