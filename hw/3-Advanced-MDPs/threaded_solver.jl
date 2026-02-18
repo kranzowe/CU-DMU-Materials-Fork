@@ -103,7 +103,7 @@ function POMDPs.action(policy::ThreadedSolverPolicy, s)
     start = time_ns()
 
     Threads.@threads for tid in 1:policy.num_threads
-        while time_ns() < start + 42_000_000
+        while time_ns() < start + 30_000_000
             threaded_solver_simulate!(policy, s, tid)
         end
     end
