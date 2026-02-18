@@ -78,7 +78,7 @@ function POMDPs.action(policy::SharedSolverPolicy, s)
 
     start = time_ns()
     Threads.@threads for _ in 1:num_threads
-        while time_ns() < start + 36_000_000
+        while time_ns() < start + 33_000_000
             shared_simulate!(policy, s)
         end
     end
