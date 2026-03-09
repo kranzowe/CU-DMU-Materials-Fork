@@ -35,7 +35,7 @@ A submission should consist of two or three files:
         % \item Consider the following continuous-space MDP: $S = \mathbb{R}$, $A = \mathbb{R}$, $T(s'|s, a) = \mathcal{N}(s + a, 1)$, $R(s, a) = -s^2 - a^2$, $\gamma = 0.9$. Suppose that we have calculated the optimal value function for this MDP and found that $U^*(s) = -10s^2$. What is the optimal policy $\pi^*(s)$? Justify your answer.
         \item Suppose you have an MDP defined by 
             \begin{itemize}[label={},nosep]
-                \item $S = \mathbb{R}, \quad A = \{0, 0.1, 1\}, \quad \gamma = 1.0$
+                \item {\color{purple}$S = [0, \infty)$}, $\quad A = \{0, 0.1, 1\}$, $\quad \gamma = 1.0$
                 \item $T(s'|s, a) = \mathcal{U}([s+a, s+a+1])$
                 \item $R(s, a) = - \mathbbm{1}(s \leq 1) - a$
             \end{itemize}
@@ -47,7 +47,8 @@ A submission should consist of two or three files:
 \begin{question} (10 pts) Do similar $Q$ values imply similar rewards?
     Consider the following claim:
     \begin{quote}
-    If a policy $\pi$ satisfies $|Q^*(s, \pi^*(s)) - Q^*(s, \pi(s))| \leq \beta$ for all $s \in S$ for some $\beta > 0$, then it immediately follows that $|R(s, \pi^*(s)) - R(s, \pi(s))| \leq \beta$ for any $s \in S$.
+    % If a policy $\pi$ satisfies $|Q^*(s, \pi^*(s)) - Q^*(s, \pi(s))| \leq \beta$ for all $s \in S$ for some $\beta > 0$, then it immediately follows that $|R(s, \pi^*(s)) - R(s, \pi(s))| \leq \beta$ for any $s \in S$.
+    {\color{purple}Let $\beta$ be a positive constant. If a policy $\pi$ satisfies $|Q^*(s, \pi^*(s)) - Q^*(s, \pi(s))| \leq \beta$ for all $s \in S$, then it immediately follows that $|R(s, \pi^*(s)) - R(s, \pi(s))| \leq \beta$ for all $s \in S$.}
     % If $|Q^*(s, \pi^*(s)) - Q^*(s, a)| \leq \beta$, then $|\mathcal{R}(s, \pi^*(s)) - \mathcal{R}(s, a)| \leq \beta$.
     \end{quote}
     It turns out that this claim is incorrect.\footnote{Even seasoned researchers can be tripped up by this - this claim was erroneously made in the proof for Lemma 5 of the Sparse Sampling paper by Kearns, Mansour, and Ng \url{https://www.cis.upenn.edu/~mkearns/papers/sparsesampling-journal.pdf}.} In this exercise, you will formulate a counterexample demonstrating that it is false. Consider the MDP below:
