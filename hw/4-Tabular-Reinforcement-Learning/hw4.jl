@@ -100,9 +100,9 @@ function q_lambda_episode!(Q, env; ϵ=0.10, γ=0.99, α=0.05, λ=0.9)
 
         δ = r + γ*Q[(sp, a_greedy)] - Q[(s, a)]
 
-        for ((s, a), n) in N
-            Q[(s, a)] += α*δ*n
-            N[(s, a)] *= γ*λ
+        for ((s_, a_), n) in N
+            Q[(s_, a_)] += α*δ*n
+            N[(s_, a_)] *= γ*λ
         end
 
         s = sp
@@ -123,9 +123,9 @@ function q_lambda_episode!(Q, env; ϵ=0.10, γ=0.99, α=0.05, λ=0.9)
     N[(s, a)] = get(N, (s, a), 0.0) + 1
     δ = r - Q[(s, a)]
 
-    for ((s, a), n) in N
-        Q[(s, a)] += α*δ*n
-        N[(s, a)] *= γ*λ
+    for ((s_, a_), n) in N
+        Q[(s_, a_)] += α*δ*n
+        N[(s_, a_)] *= γ*λ
     end
 
     return (hist=hist, Q = copy(Q), time=time()-start)
@@ -146,10 +146,11 @@ function q_lambda!(env; n_episodes=100, kwargs...)
 end
 
 m = HW4.gw
+m = SimpleGridWorld()
 env = convert(AbstractEnv, m)
-
-lambda_episodes = sarsa_lambda!(env, n_episodes=30000, α=0.1, λ=0.9);
-q_lambda_episodes = q_lambda!(env, n_episodes=30000, α=0.1, λ=0.9);
+epsidoes = 10000
+lambda_episodes = sarsa_lambda!(env, n_episodes=epsidoes, γ=0.99, α=0.01, λ=0.01);
+q_lambda_episodes = q_lambda!(env, n_episodes=epsidoes, γ=0.99, α=0.01, λ=0.01);
 
 # using Interact
 # @manipulate for episode in 1:length(lambda_episodes), step in 1:maximum(ep->length(ep.hist), lambda_episodes)
@@ -181,7 +182,7 @@ episodes = Dict("SARSA-λ"=>lambda_episodes, "Q-Learning-Lambda"=>q_lambda_episo
 
 p1 = plot(xlabel="steps in environment", ylabel="avg return")
 n = 20
-stop = 1000
+stop = epsidoes
 for (name, eps) in episodes
     Q = Dict((s, a) => 0.0 for s in observations(env), a in actions(env))
     xs = [0]
