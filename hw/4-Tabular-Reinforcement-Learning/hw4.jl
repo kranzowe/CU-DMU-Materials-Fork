@@ -148,7 +148,7 @@ end
 m = HW4.gw
 # m = SimpleGridWorld()
 env = convert(AbstractEnv, m)
-epsidoes = 400000
+epsidoes = 300000
 lambda_episodes = sarsa_lambda!(env, n_episodes=epsidoes, γ=0.99, α=0.01, λ=0.7);
 q_lambda_episodes = q_lambda!(env, n_episodes=epsidoes, γ=0.99, α=0.01, λ=0.7);
 
