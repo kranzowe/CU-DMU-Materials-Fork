@@ -6,7 +6,7 @@ import POMDPTools
 using SparseArrays
 using Statistics: mean
 using DMUStudent.HW4: HW4
-
+ENV["GKSwstype"] = "100"
 
 function sarsa_lambda_episode!(Q, env; ϵ=0.10, γ=0.99, α=0.05, λ=0.9)
 
@@ -146,11 +146,11 @@ function q_lambda!(env; n_episodes=100, kwargs...)
 end
 
 m = HW4.gw
-m = SimpleGridWorld()
+# m = SimpleGridWorld()
 env = convert(AbstractEnv, m)
-epsidoes = 10000
-lambda_episodes = sarsa_lambda!(env, n_episodes=epsidoes, γ=0.99, α=0.01, λ=0.01);
-q_lambda_episodes = q_lambda!(env, n_episodes=epsidoes, γ=0.99, α=0.01, λ=0.01);
+epsidoes = 400000
+lambda_episodes = sarsa_lambda!(env, n_episodes=epsidoes, γ=0.99, α=0.01, λ=0.7);
+q_lambda_episodes = q_lambda!(env, n_episodes=epsidoes, γ=0.99, α=0.01, λ=0.7);
 
 # using Interact
 # @manipulate for episode in 1:length(lambda_episodes), step in 1:maximum(ep->length(ep.hist), lambda_episodes)
@@ -181,7 +181,7 @@ episodes = Dict("SARSA-λ"=>lambda_episodes, "Q-Learning-Lambda"=>q_lambda_episo
 
 
 p1 = plot(xlabel="steps in environment", ylabel="avg return")
-n = 20
+n = 10000
 stop = epsidoes
 for (name, eps) in episodes
     Q = Dict((s, a) => 0.0 for s in observations(env), a in actions(env))
@@ -198,8 +198,8 @@ end
 savefig("p1.png")
 
 p2 = plot(xlabel="wall clock time", ylabel="avg return")
-n = 20 
-stop = 1000
+n = 10000
+stop = epsidoes
 for (name,eps) in episodes
     Q = Dict((s, a) => 0.0 for s in observations(env), a in actions(env))
     xs = [0.0]
