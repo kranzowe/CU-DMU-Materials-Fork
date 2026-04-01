@@ -1,22 +1,29 @@
 ############
 # Question 3
 ############
-
+using DMUStudent.HW5: HW5, mc
 using CommonRLInterface
 using Flux
+using CUDA
 using CommonRLInterface.Wrappers: QuickWrapper
 using JLD2
 
 # The following are some basic components needed for DQN
 # ai generated save and load funcs
+
+device = CUDA.functional() ? gpu : cpu
+println("Using ", CUDA.functional() ? "GPU" : "CPU")
+
+
 function save_model(Q, filename="best_q.jld2")
     model_state = Flux.state(Q)
     @save filename model_state
 end
 
 function load_model(filename="best_q.jld2")
-    Q = Chain(Dense(2, 128, relu),
-              Dense(128, 5))
+    Q = Chain(Dense(2, 256, relu),
+            Dense(256, 256, relu),
+              Dense(256, 5))
     @load filename model_state
     Flux.loadmodel!(Q, model_state)
     return Q
@@ -39,8 +46,9 @@ end
 
 function dqn(env)
     # This network should work for the Q function - an input is a state; the output is a vector containing the Q-values for each action 
-    Q = Chain(Dense(2, 128, relu),
-              Dense(128, length(actions(env))))
+    Q = Chain(Dense(2, 256, relu),
+            Dense(256, 256, relu),
+              Dense(256, length(actions(env)))) |> device
 
     opt = Flux.setup(Adam(0.0005), Q)
 
@@ -64,8 +72,8 @@ function dqn(env)
     Q_target = deepcopy(Q)
 
     best_Q_params = nothing
-    episodes = 1000
-    copy_freq = 100
+    episodes = 40000
+    copy_freq = 10
     num_samples_per_episode = 64 
     max_buffer = 10000
     max_return = -1000000
@@ -75,11 +83,11 @@ function dqn(env)
         for sample in 1:num_samples_per_episode
             s = observe(env)
 
-            eps = max(0.1, 1.0 - episode / (episodes/1.3))
+            eps = max(0.05, 1.0 - episode / (episodes * 0.8))
             if rand() < eps
                 a_ind = rand(1:length(actions(env)))
             else
-                a_ind = argmax(Q(s[1:2])) # action index - the index, rather than the actual action itself, will be needed in the loss function
+                a_ind = argmax(Q(device(Float32.(s[1:2])))) # action index - the index, rather than the actual action itself, will be needed in the loss function
             end
             r = act!(env, actions(env)[a_ind])
             sp = observe(env)
@@ -97,27 +105,39 @@ function dqn(env)
         end
 
         if episode % copy_freq == 0
-            Q_target = deepcopy(Q)
+            # trying soft updatin of target.
+            tau = 0.01f0
+            for (p, p_target) in zip(Flux.params(Q), Flux.params(Q_target))
+                p_target .= (1 - tau) .* p_target .+ tau .* p
+            end
         end
 
         # select some data from the buffer and train (you may have to adjust some things, and you will have to do this many times):
-        for data in rand(buffer, 100)
+        for data in rand(buffer, 200)
+            if length(buffer) < 1000 #dont wanna traing on crap
+                continue
+            end
+            # needed help converting to GPU
+            s_gpu = device(Float32.(data[1]))
+            sp_gpu = device(Float32.(data[5] ? zeros(Float32, 2) : data[4]))
+            gpu_data = (s_gpu, data[2], data[3], sp_gpu, data[5])
             # this runs a forward and backward pass to calculate the loss and gradient
-            loss_value, grads = Flux.withgradient(loss, Q, Q_target, data...)
+            loss_value, grads = Flux.withgradient(loss, Q, Q_target, gpu_data...)
 
             # this will take a gradient step
             Flux.update!(opt, Q, grads[1])
         end
 
-        if episode % 300 ==0
-            ret = HW5.evaluate(s->actions(env)[argmax(Q(s[1:2]))], n_episodes=10)
+        if episode % 200 ==0
+            Q_cpu = Q |> cpu
+            ret = HW5.evaluate(s->actions(env)[argmax(Q_cpu(s[1:2]))], n_episodes=100)
 
-            if ret > max_return
+            if ret.score > max_return
                 #save Q somehow
                 best_Q_params = Flux.state(Q)
                 @save "best_q.jld2" best_Q_params
-                println("NEw max!", ret)
-                max_return = ret
+                println("NEw max!", ret.score)
+                max_return = ret.score
             end
         end
 
@@ -128,7 +148,7 @@ function dqn(env)
 
     # Make sure to evaluate, print, and plot often! You will want to save your best policy.
     
-    return Q
+    return Q |> cpu
 end
 
 Q = dqn(env)
