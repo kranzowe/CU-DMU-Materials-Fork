@@ -71,7 +71,7 @@ function dqn(env)
     Q_target = deepcopy(Q)
 
     best_Q_params = nothing
-    episodes = 20000
+    episodes = 30000
     copy_freq = 10
     num_samples_per_episode = 64 
     max_buffer = 30000
