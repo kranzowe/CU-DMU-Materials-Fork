@@ -5,6 +5,8 @@ using DMUStudent.HW5: HW5, mc
 using CommonRLInterface
 using Flux
 using CUDA
+using cuDNN
+using LinearAlgebra
 using CommonRLInterface.Wrappers: QuickWrapper
 using JLD2
 using cuDNN
@@ -37,13 +39,16 @@ env = QuickWrapper(HW5.mc,
 
 # create your loss function for Q training here
 function loss(Q, Q_target, s, a_onehot, r, sp, done)
-    if done
-        target_Q = r
-    else
-        target_Q = r + 0.99f0 * maximum(Q_target(sp))
-    end
+    gamma = 0.99f0
+    #  batch loss
+    q_target_values = Q_target(sp)
+    max_q_target = maximum(q_target_values)
+    target_Q = done ? r : r + gamma * max_q_target
+    
+    # weird stuff for gpu. Pytorch is easier wow
     q_values = Q(s)
-    q_selected = sum(q_values .* a_onehot)
+    q_selected = dot(q_values, a_onehot)  # Use dot instead of sum(.*)
+    
     return (target_Q - q_selected)^2
 end
 
