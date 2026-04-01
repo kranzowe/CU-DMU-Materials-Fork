@@ -1,19 +1,12 @@
-############
-# Question 3
-############
+
 using DMUStudent.HW5: HW5, mc
 using CommonRLInterface
 using Flux
 using Plots
 using CommonRLInterface.Wrappers: QuickWrapper
 using JLD2
-
-
 # The following are some basic components needed for DQN
 # ai generated save and load funcs
-
-
-
 function save_model(Q, filename="best_q.jld2")
     model_state = Flux.state(Q)
     @save filename model_state
