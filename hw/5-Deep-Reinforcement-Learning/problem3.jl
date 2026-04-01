@@ -44,7 +44,7 @@ function loss(Q, Q_target, s, a_ind, r, sp, done)
     end
     q_values = Q(s)
     q_selected = sum(q_values .* Flux.onehot(a_ind, 1:length(q_values)))
-    return (target_Q - Q(s)[a_ind])^2 # Q learning loss i think?
+    return (target_Q - q_selected)^2 # Q learning loss i think?
 end
 
 function dqn(env)
