@@ -7,6 +7,7 @@ using Flux
 using CUDA
 using CommonRLInterface.Wrappers: QuickWrapper
 using JLD2
+using cuDNN
 
 # The following are some basic components needed for DQN
 # ai generated save and load funcs
@@ -107,7 +108,7 @@ function dqn(env)
         if episode % copy_freq == 0
             # trying soft updatin of target.
             tau = 0.01f0
-            for (p, p_target) in zip(Flux.params(Q), Flux.params(Q_target))
+            for (p, p_target) in zip(Flux.trainables(Q), Flux.trainables(Q_target))
                 p_target .= (1 - tau) .* p_target .+ tau .* p
             end
         end
