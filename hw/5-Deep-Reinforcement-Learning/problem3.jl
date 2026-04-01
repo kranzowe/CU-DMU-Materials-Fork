@@ -36,15 +36,15 @@ env = QuickWrapper(HW5.mc,
                   )
 
 # create your loss function for Q training here
-function loss(Q, Q_target, s, a_ind, r, sp, done)
+function loss(Q, Q_target, s, a_onehot, r, sp, done)
     if done
         target_Q = r
     else
         target_Q = r + 0.99f0 * maximum(Q_target(sp))
     end
     q_values = Q(s)
-    q_selected = sum(q_values .* Flux.onehot(a_ind, 1:length(q_values)))
-    return (target_Q - q_selected)^2 # Q learning loss i think?
+    q_selected = sum(q_values .* a_onehot)
+    return (target_Q - q_selected)^2
 end
 
 function dqn(env)
@@ -123,7 +123,10 @@ function dqn(env)
             # needed help converting to GPU
             s_gpu = device(Float32.(data[1]))
             sp_gpu = device(Float32.(data[5] ? zeros(Float32, 2) : data[4]))
-            gpu_data = (s_gpu, data[2], data[3], sp_gpu, data[5])
+            # Convert action index to one-hot Float32 array on GPU
+            n_actions = length(actions(env))
+            a_onehot = device(Float32.(1:n_actions .== data[2]))  # Creates [0,0,1,0,0] style vector on GPU
+            gpu_data = (s_gpu, a_onehot, Float32(data[3]), sp_gpu, data[5])
             # this runs a forward and backward pass to calculate the loss and gradient
             loss_value, grads = Flux.withgradient(loss, Q, Q_target, gpu_data...)
 
