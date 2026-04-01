@@ -42,6 +42,8 @@ function loss(Q, Q_target, s, a_ind, r, sp, done)
     else
         target_Q = r + 0.99f0 * maximum(Q_target(sp))
     end
+    q_values = Q(s)
+    q_selected = sum(q_values .* Flux.onehot(a_ind, 1:length(q_values)))
     return (target_Q - Q(s)[a_ind])^2 # Q learning loss i think?
 end
 
