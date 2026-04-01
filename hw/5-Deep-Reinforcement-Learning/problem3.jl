@@ -4,7 +4,7 @@
 using DMUStudent.HW5: HW5, mc
 using CommonRLInterface
 using Flux
-
+using Plots
 using CommonRLInterface.Wrappers: QuickWrapper
 using JLD2
 
@@ -21,7 +21,7 @@ end
 
 function load_model(filename="best_q.jld2")
     Q = Chain(Dense(2, 128, relu),
-            Dense(128, 128, relu),
+            # Dense(128, 128, relu),
               Dense(128, 5))
     @load filename model_state
     Flux.loadmodel!(Q, model_state)
@@ -46,7 +46,7 @@ end
 function dqn(env)
     # This network should work for the Q function - an input is a state; the output is a vector containing the Q-values for each action 
     Q = Chain(Dense(2, 128, relu),
-            Dense(128, 128, relu),
+            # Dense(128, 128, relu),
               Dense(128, length(actions(env))))
 
     opt = Flux.setup(Adam(0.0005), Q)
@@ -71,11 +71,16 @@ function dqn(env)
     Q_target = deepcopy(Q)
 
     best_Q_params = nothing
-    episodes = 40000
+    episodes = 20000
     copy_freq = 10
     num_samples_per_episode = 64 
     max_buffer = 10000
     max_return = -1000000
+    
+    # Track learning curve
+    eval_episodes = Int[]
+    eval_scores = Float64[]
+    
     for episode in 1:episodes
 
         # sample the current pollicy
@@ -129,6 +134,21 @@ function dqn(env)
         if episode % 200 ==0
             Q_cpu = Q |> cpu
             ret = HW5.evaluate(s->actions(env)[argmax(Q_cpu(s[1:2]))], n_episodes=100)
+            
+            # Record for learning curve
+            push!(eval_episodes, episode)
+            push!(eval_scores, ret.score)
+            
+            # Save learning curve plot
+            p = plot(eval_episodes, eval_scores, 
+                     xlabel="Episode", 
+                     ylabel="Score (100 episode avg)",
+                     title="DQN Learning Curve",
+                     legend=false,
+                     linewidth=2,
+                     marker=:circle,
+                     markersize=3)
+            savefig(p, "learning_curve.png")
 
             if ret.score > max_return
                 #save Q somehow
@@ -137,14 +157,29 @@ function dqn(env)
                 println("NEw max!", ret.score)
                 max_return = ret.score
             end
+            
+            println("Episode $episode: score = $(ret.score)")
         end
 
     end
+    
+
+    p = plot(eval_episodes, eval_scores, 
+             xlabel="Episode", 
+             ylabel="Score (100 episode avg)",
+             title="DQN Learning Curve - Final",
+             legend=false,
+             linewidth=2,
+             marker=:circle,
+             markersize=3)
+    savefig(p, "learning_curve_final.png")
+    
+    # Also save the data as JLD2 in case you want to replot later
+    @save "learning_curve_data.jld2" eval_episodes eval_scores
+    
     if best_Q_params !== nothing
         Flux.loadmodel!(Q, best_Q_params)
     end
-
-    # Make sure to evaluate, print, and plot often! You will want to save your best policy.
     
     return Q |> cpu
 end
