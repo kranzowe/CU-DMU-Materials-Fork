@@ -74,7 +74,7 @@ function dqn(env)
     episodes = 20000
     copy_freq = 10
     num_samples_per_episode = 64 
-    max_buffer = 10000
+    max_buffer = 30000
     max_return = -1000000
     
     # Track learning curve
@@ -87,7 +87,7 @@ function dqn(env)
         for sample in 1:num_samples_per_episode
             s = observe(env)
 
-            eps = max(0.05, 1.0 - episode / (episodes * 0.8))
+            eps = max(0.05, 1.0 - episode / (episodes * 0.5))
             if rand() < eps
                 a_ind = rand(1:length(actions(env)))
             else
@@ -117,7 +117,7 @@ function dqn(env)
         end
 
         # select some data from the buffer and train (you may have to adjust some things, and you will have to do this many times):
-        for data in rand(buffer, 200)
+        for data in rand(buffer, 400)
             if length(buffer) < 1000 #dont wanna traing on crap
                 continue
             end
