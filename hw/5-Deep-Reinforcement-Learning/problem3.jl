@@ -49,7 +49,7 @@ function dqn(env)
             # Dense(128, 128, relu),
               Dense(128, length(actions(env))))
 
-    opt = Flux.setup(Adam(0.0005), Q)
+    opt = Flux.setup(Adam(0.001), Q)
 
 
     # We can create 1 tuple of experience like this
@@ -72,9 +72,9 @@ function dqn(env)
 
     best_Q_params = nothing
     episodes = 30000
-    copy_freq = 100
+    copy_freq = 50
     num_samples_per_episode = 64 
-    max_buffer = 30000
+    max_buffer = 40000
     max_return = -1000000
     
     # Track learning curve
@@ -87,7 +87,7 @@ function dqn(env)
         for sample in 1:num_samples_per_episode
             s = observe(env)
 
-            eps = max(0.05, 1.0 - episode / (episodes * 0.5))
+            eps = max(0.05, 1.0 - episode / (episodes * 0.8))
             if rand() < eps
                 a_ind = rand(1:length(actions(env)))
             else
@@ -130,6 +130,13 @@ function dqn(env)
             
             loss_value, grads = Flux.withgradient(loss, Q, Q_target, s, a_ind, r, sp, done)
             Flux.update!(opt, Q, grads[1])
+        end
+        
+        # gonna update learning rate to slow down later
+        if episode % 5000 == 0 && episode > 0
+            # som ai help to make this clean
+            Flux.adjust!(opt, eta = 0.001 * (0.5 ^ (episode ÷ 5000)))
+            println("LR decayed to: ", 0.001 * (0.5 ^ (episode ÷ 5000)))
         end
 
         if episode % 200 ==0
