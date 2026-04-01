@@ -72,7 +72,7 @@ function dqn(env)
 
     best_Q_params = nothing
     episodes = 30000
-    copy_freq = 10
+    copy_freq = 100
     num_samples_per_episode = 64 
     max_buffer = 30000
     max_return = -1000000
@@ -109,11 +109,12 @@ function dqn(env)
         end
 
         if episode % copy_freq == 0
-            # trying soft updatin of target.
-            tau = 0.01f0
-            for (p, p_target) in zip(Flux.trainables(Q), Flux.trainables(Q_target))
-                p_target .= (1 - tau) .* p_target .+ tau .* p
-            end
+            # # trying soft updatin of target.
+            # tau = 0.01f0
+            # for (p, p_target) in zip(Flux.trainables(Q), Flux.trainables(Q_target))
+            #     p_target .= (1 - tau) .* p_target .+ tau .* p
+            # end
+            Q_target = deepcopy(Q)
         end
 
         # select some data from the buffer and train (you may have to adjust some things, and you will have to do this many times):
