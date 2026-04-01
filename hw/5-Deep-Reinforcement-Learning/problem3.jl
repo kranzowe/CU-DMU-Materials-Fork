@@ -4,16 +4,14 @@
 using DMUStudent.HW5: HW5, mc
 using CommonRLInterface
 using Flux
-using CUDA
+
 using CommonRLInterface.Wrappers: QuickWrapper
 using JLD2
-using cuDNN
+
 
 # The following are some basic components needed for DQN
 # ai generated save and load funcs
 
-device = CUDA.functional() ? gpu : cpu
-println("Using ", CUDA.functional() ? "GPU" : "CPU")
 
 
 function save_model(Q, filename="best_q.jld2")
@@ -22,9 +20,9 @@ function save_model(Q, filename="best_q.jld2")
 end
 
 function load_model(filename="best_q.jld2")
-    Q = Chain(Dense(2, 256, relu),
-            Dense(256, 256, relu),
-              Dense(256, 5))
+    Q = Chain(Dense(2, 128, relu),
+            Dense(128, 128, relu),
+              Dense(128, 5))
     @load filename model_state
     Flux.loadmodel!(Q, model_state)
     return Q
@@ -47,9 +45,9 @@ end
 
 function dqn(env)
     # This network should work for the Q function - an input is a state; the output is a vector containing the Q-values for each action 
-    Q = Chain(Dense(2, 256, relu),
-            Dense(256, 256, relu),
-              Dense(256, length(actions(env)))) |> device
+    Q = Chain(Dense(2, 128, relu),
+            Dense(128, 128, relu),
+              Dense(128, length(actions(env))))
 
     opt = Flux.setup(Adam(0.0005), Q)
 
@@ -88,7 +86,7 @@ function dqn(env)
             if rand() < eps
                 a_ind = rand(1:length(actions(env)))
             else
-                a_ind = argmax(Q(device(Float32.(s[1:2])))) # action index - the index, rather than the actual action itself, will be needed in the loss function
+                a_ind = argmax(Q(Float32.(s[1:2])))  # Remove device(), just use Float32
             end
             r = act!(env, actions(env)[a_ind])
             sp = observe(env)
@@ -118,14 +116,13 @@ function dqn(env)
             if length(buffer) < 1000 #dont wanna traing on crap
                 continue
             end
-            # needed help converting to GPU
-            s_gpu = device(Float32.(data[1]))
-            sp_gpu = device(Float32.(data[5] ? zeros(Float32, 2) : data[4]))
-            gpu_data = (s_gpu, data[2], data[3], sp_gpu, data[5])
-            # this runs a forward and backward pass to calculate the loss and gradient
-            loss_value, grads = Flux.withgradient(loss, Q, Q_target, gpu_data...)
-
-            # this will take a gradient step
+            s = Float32.(data[1])
+            a_ind = data[2]
+            r = Float32(data[3])
+            sp = data[5] ? zeros(Float32, 2) : Float32.(data[4])
+            done = data[5]
+            
+            loss_value, grads = Flux.withgradient(loss, Q, Q_target, s, a_ind, r, sp, done)
             Flux.update!(opt, Q, grads[1])
         end
 
