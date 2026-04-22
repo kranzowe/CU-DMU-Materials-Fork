@@ -70,37 +70,31 @@ end
 beliefvec(b::DiscreteBelief) = b.b # this function may be helpful to get the belief as a vector in stateindex order
 
 
-function qmdp_solve(m, discount=discount(m); tol=1e-4, max_iters=100)
-    
-    gamma = 0.99
-    eps = 1e-4
-    S = ordered_states(m)
-    A = ordered_actions(m)
-    T = transition_matrices(m)
+function qmdp_solve(m, discount=discount(m); tol=1e-6, max_iters=1000)
+    γ = discount
+    A = collect(ordered_actions(m))
+    T_sparse = transition_matrices(m, sparse=true)
     R = reward_vectors(m)
-    Q = zeros(length(S), length(A))
-    V = ones(length(S))
-    V_last = ones(length(S))
-    itr = 0 
-    while itr < max_iters
-        
-        for i in 1:length(A)
-            a = A[i]
-            Q[]
+    ns = length(states(m))
 
-        if maximum(abs.(V - V_last)) < eps
+    V_old = zeros(ns)
+    V_new = zeros(ns)
 
+    for _ in 1:max_iters
+        Q_mat = hcat([R[a] .+ γ .* (T_sparse[a] * V_old) for a in A]...)
+        V_new .= vec(maximum(Q_mat, dims=2))
 
-            return HW6AlphaVectorPolicy(alphas, acts)
-        else
-            V_last = V
-            itr += 1
+        if maximum(abs.(V_new .- V_old)) < tol
+            break
         end
-
+        V_new, V_old = V_old, V_new
     end
+
+    # Build alpha vectors (one per action)
+    alphas = [Vector{Float64}(R[a] .+ γ .* (T_sparse[a] * V_new)) for a in A]
+
+    return HW6AlphaVectorPolicy(alphas, A)
 end
-
-
 
 function evaluate_policy(m, p, up; n_episodes=5000, max_steps=500)
     sim = RolloutSimulator(max_steps=max_steps)
@@ -260,15 +254,13 @@ end)
 #####################
 
 m = LaserTagPOMDP()
-println("Building updater...")
+
 up = DiscreteUpdater(m)
-println("Done.")
 
-println("Running QMDP on LaserTag (this may take a moment)...")
-@time laser_qmdp = qmdp_solve(m; tol=1e-3, max_iters=50)  # looser tolerance, fewer iters
-println("QMDP done.")
 
-function pomcp_solve(m, qmdp_rollout; tree_queries=10, c=)
+@time laser_qmdp = qmdp_solve(m; tol=1e-4, max_iters=100)  # looser tolerance, fewer iters
+
+function pomcp_solve(m, qmdp_rollout; tree_queries=10, c=5)
     A = collect(actions(m))
     rollout_pol = FunctionPolicy(s -> begin
         si = stateindex(m, s)
@@ -284,11 +276,10 @@ function pomcp_solve(m, qmdp_rollout; tree_queries=10, c=)
     return solve(solver, m)
 end
 
-println("Solving POMCP (fast)...")
-@time pomcp_fast = pomcp_solve(m, laser_qmdp; tree_queries=1, c=1)
-println("Evaluating (10 episodes)...")
-@time @show HW6.evaluate((pomcp_fast, up), n_episodes=10)
 
+@time qmdp_p = pomcp_solve(m, laser_qmdp; tree_queries=50, c=5)
+
+HW6.evaluate((qmdp_p, up), "owen.kranz@colorado.edu", n_episodes=1000)
 #----------------
 # Visualization
 # (all code below is optional)
