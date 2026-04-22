@@ -3,7 +3,7 @@ using DMUStudent.HW6
 using POMDPTools: transition_matrices, reward_vectors, SparseCat, Deterministic, RolloutSimulator, DiscreteBelief, FunctionPolicy, ordered_states, ordered_actions, DiscreteUpdater, has_consistent_distributions
 using QuickPOMDPs: QuickPOMDP
 using POMDPModels: TigerPOMDP, TIGER_LEFT, TIGER_RIGHT, TIGER_LISTEN, TIGER_OPEN_LEFT, TIGER_OPEN_RIGHT
-using NativeSARSOP: SARSOPSolver
+using NativeSARSOP: SARSOPSolver 
 using Statistics
 ENV["GKSwstype"] = "100"
 using Plots
@@ -11,15 +11,8 @@ using LinearAlgebra
 using Random
 using Printf
 using BasicPOMCP
-using Random
-
-##################
-# Problem 1: Tiger
-##################
-
-#--------
-# Updater
-#--------
+# using POMDPGifs
+# import Cairo, Fontconfig # needed to display properly
 
 struct HW6Updater{M<:POMDP} <: Updater
     m::M
@@ -30,8 +23,6 @@ function POMDPs.update(up::HW6Updater, b::DiscreteBelief, a, o)
     bp_vec = zeros(length(states(m)))
     b_vec = beliefvec(b)
 
-    # Bayesian update:
-    # b'(s') ∝ Z(o|a,s') * Σ_s T(s'|s,a) b(s)
     for sp in ordered_states(m)
         spi = stateindex(m, sp)
         pred_sp = 0.0
@@ -45,8 +36,7 @@ function POMDPs.update(up::HW6Updater, b::DiscreteBelief, a, o)
     z = sum(bp_vec)
     if z > 0.0
         bp_vec ./= z
-    else
-        # fallback in degenerate case
+    else # good practice so no div 0
         bp_vec .= 1.0 / length(bp_vec)
     end
 
@@ -58,7 +48,6 @@ Z(m::POMDP, a, sp, o) = pdf(observation(m, a, sp), o)
 T(m::POMDP, s, a, sp) = pdf(transition(m, s, a), sp)
 # POMDPs.transtion and POMDPs.observation return distribution objects. See the POMDPs.jl documentation for more details.
 
-# This is needed to automatically turn any distribution into a discrete belief.
 function POMDPs.initialize_belief(up::HW6Updater, distribution::Any)
     b_vec = zeros(length(states(up.m)))
     for s in states(up.m)
@@ -66,12 +55,6 @@ function POMDPs.initialize_belief(up::HW6Updater, distribution::Any)
     end
     return DiscreteBelief(up.m, b_vec)
 end
-
-# Note: to check your belief updater code, you can use POMDPTools: DiscreteUpdater. It should function exactly like your updater.
-
-#-------
-# Policy
-#-------
 
 struct HW6AlphaVectorPolicy{A} <: Policy
     alphas::Vector{Vector{Float64}}
@@ -86,54 +69,38 @@ end
 
 beliefvec(b::DiscreteBelief) = b.b # this function may be helpful to get the belief as a vector in stateindex order
 
-#------
-# QMDP
-#------
 
-function qmdp_solve(m, discount=discount(m); tol=1e-8, max_iters=100_000)
-    S = collect(ordered_states(m))
-    A = collect(actions(m))
-    ns = length(S)
+function qmdp_solve(m, discount=discount(m); tol=1e-4, max_iters=100)
+    
+    gamma = 0.99
+    eps = 1e-4
+    S = ordered_states(m)
+    A = ordered_actions(m)
+    T = transition_matrices(m)
+    R = reward_vectors(m)
+    Q = zeros(length(S), length(A))
+    V = ones(length(S))
+    V_last = ones(length(S))
+    itr = 0 
+    while itr < max_iters
+        
+        for i in 1:length(A)
+            a = A[i]
+            Q[]
 
-    V = zeros(ns)
+        if maximum(abs.(V - V_last)) < eps
 
-    # Value iteration on underlying fully-observable MDP
-    for _ in 1:max_iters
-        Vnew = similar(V)
-        for s in S
-            si = stateindex(m, s)
-            best_q = -Inf
-            for a in A
-                qsa = reward(m, s, a) + discount * sum(T(m, s, a, sp) * V[stateindex(m, sp)] for sp in S)
-                best_q = max(best_q, qsa)
-            end
-            Vnew[si] = best_q
+
+            return HW6AlphaVectorPolicy(alphas, acts)
+        else
+            V_last = V
+            itr += 1
         end
-        if maximum(abs.(Vnew .- V)) < tol
-            V = Vnew
-            break
-        end
-        V = Vnew
+
     end
-
-    acts = actiontype(m)[]
-    alphas = Vector{Float64}[]
-    for a in A
-        α = zeros(ns)
-        for s in S
-            si = stateindex(m, s)
-            α[si] = reward(m, s, a) + discount * sum(T(m, s, a, sp) * V[stateindex(m, sp)] for sp in S)
-        end
-        push!(alphas, α)
-        push!(acts, a)
-    end
-
-    return HW6AlphaVectorPolicy(alphas, acts)
 end
 
-# -----------------------------
-# Tiger: solve, plot, evaluate
-# -----------------------------
+
 
 function evaluate_policy(m, p, up; n_episodes=5000, max_steps=500)
     sim = RolloutSimulator(max_steps=max_steps)
@@ -160,9 +127,9 @@ function plot_tiger_alphas(m, qmdp_p, sarsop_p; filename="tiger_alphas.png")
     bs = range(0.0, 1.0, length=201)
 
     plt = plot(
-        title="Tiger alpha-vector lines: QMDP vs SARSOP",
-        xlabel="b(TIGER_LEFT)",
-        ylabel="α ⋅ b",
+        title="QMDP vs SARSOP",
+        xlabel="b(TL)",
+        ylabel="alpha vector values",
         legend=:outerright,
     )
 
@@ -273,10 +240,11 @@ up = HW6Updater(cancer)
 heuristic = FunctionPolicy(function (b)
     p_invasive = pdf(b, :INVASIVE)
     p_insitu = pdf(b, :INSITU)
+    p_perf = pdf(b, :HEALTHY)
 
-    if p_invasive > 0.3 || p_insitu > 0.8
+    if p_invasive + p_insitu > 0.3 # combining works good
         return :TREAT
-    elseif p_insitu > 0.4
+    elseif p_perf < 0.9 # not super healthy
         return :TEST
     else
         return :WAIT
@@ -292,19 +260,21 @@ end)
 #####################
 
 m = LaserTagPOMDP()
+println("Building updater...")
+up = DiscreteUpdater(m)
+println("Done.")
 
-qmdp_p = qmdp_solve(m)
-up = DiscreteUpdater(m) # you may want to replace this with your updater to test it
+println("Running QMDP on LaserTag (this may take a moment)...")
+@time laser_qmdp = qmdp_solve(m; tol=1e-3, max_iters=50)  # looser tolerance, fewer iters
+println("QMDP done.")
 
-# Use this version with only 100 episodes to check how well you are doing quickly
-@show HW6.evaluate((qmdp_p, up), n_episodes=100)
-
-# A good approach to try is POMCP, implemented in the BasicPOMCP.jl package:
-using BasicPOMCP
-
-function pomcp_solve(m; tree_queries=10, c=0.8)
+function pomcp_solve(m, qmdp_rollout; tree_queries=10, c=)
     A = collect(actions(m))
-    rollout_pol = FunctionPolicy(_ -> A[rand(1:length(A))])  # cheap random rollout
+    rollout_pol = FunctionPolicy(s -> begin
+        si = stateindex(m, s)
+        i_best = argmax([α[si] for α in qmdp_rollout.alphas])
+        qmdp_rollout.alpha_actions[i_best]
+    end)
     solver = POMCPSolver(
         tree_queries=tree_queries,
         c=c,
@@ -314,16 +284,10 @@ function pomcp_solve(m; tree_queries=10, c=0.8)
     return solve(solver, m)
 end
 
-# fast tuning run
-pomcp_fast = pomcp_solve(m; tree_queries=5, c=0.7)
-@show HW6.evaluate((pomcp_fast, up), n_episodes=100)
-
-# final run
-pomcp_final = pomcp_solve(m; tree_queries=15, c=1.0)
-@show HW6.evaluate((pomcp_final, up), n_episodes=100)
-
-# When you get ready to submit, use this version with the full 1000 episodes
-# HW6.evaluate((qmdp_p, up), "REPLACE_WITH_YOUR_EMAIL@colorado.edu")
+println("Solving POMCP (fast)...")
+@time pomcp_fast = pomcp_solve(m, laser_qmdp; tree_queries=1, c=1)
+println("Evaluating (10 episodes)...")
+@time @show HW6.evaluate((pomcp_fast, up), n_episodes=10)
 
 #----------------
 # Visualization
@@ -331,19 +295,19 @@ pomcp_final = pomcp_solve(m; tree_queries=15, c=1.0)
 #----------------
 
 # You can make a gif showing what's going on like this:
-using POMDPGifs
-import Cairo, Fontconfig # needed to display properly
+# using POMDPGifs
+# import Cairo, Fontconfig # needed to display properly
 
-makegif(m, qmdp_p, up, max_steps=30, filename="lasertag.gif")
+# makegif(m, qmdp_p, up, max_steps=30, filename="lasertag.gif")
 
-# You can render a single frame like this
-using POMDPTools: stepthrough, render
-using Compose: draw, PNG
+# # You can render a single frame like this
+# using POMDPTools: stepthrough, render
+# using Compose: draw, PNG
 
-history = []
-for step in stepthrough(m, qmdp_p, up, max_steps=10)
-    push!(history, step)
-end
-displayable_object = render(m, last(history))
-# display(displayable_object) # <-this will work in a jupyter notebook or if you have vs code or ElectronDisplay
-draw(PNG("lasertag.png"), displayable_object)
+# history = []
+# for step in stepthrough(m, qmdp_p, up, max_steps=10)
+#     push!(history, step)
+# end
+# displayable_object = render(m, last(history))
+# # display(displayable_object) # <-this will work in a jupyter notebook or if you have vs code or ElectronDisplay
+# draw(PNG("lasertag.png"), displayable_object)
